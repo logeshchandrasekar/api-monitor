@@ -1,0 +1,1 @@
+CREATE DATABASE api_monitor_test;
