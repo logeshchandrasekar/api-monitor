@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: api-monitor-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: apimonitor
+      POSTGRES_PASSWORD: apimonitor
+      POSTGRES_DB: api_monitor
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apimonitor -d api_monitor"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit
+    profiles: ["mail"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  pgdata:

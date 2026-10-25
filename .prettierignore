@@ -1,0 +1,4 @@
+node_modules
+dist
+server/src/generated
+package-lock.json
