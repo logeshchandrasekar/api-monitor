@@ -8,3 +8,6 @@ coverage
 .vite
 *.log
 .DS_Store
+# Prisma-generated AI assistant skill files (not part of the app)
+server/.claude/skills/
+server/.windsurf/skills/
