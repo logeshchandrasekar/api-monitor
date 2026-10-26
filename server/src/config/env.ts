@@ -6,6 +6,8 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().startsWith("postgres"),
   CLIENT_URL: z.url().default("http://localhost:5173"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
 const parsed = schema.safeParse(process.env);
