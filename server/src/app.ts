@@ -11,6 +11,7 @@ import { globalLimiter } from "./middleware/rateLimit.js";
 import { requireJson } from "./middleware/requireJson.js";
 import { authRouter } from "./routes/auth.js";
 import { healthRouter } from "./routes/health.js";
+import { monitorsRouter } from "./routes/monitors.js";
 import { usersRouter } from "./routes/users.js";
 
 export function createApp() {
@@ -38,6 +39,7 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/users", usersRouter);
+  app.use("/api/monitors", monitorsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

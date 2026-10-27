@@ -27,5 +27,59 @@ model User {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
+  monitors Monitor[]
+
   @@map("users")
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+  HEAD
+}
+
+enum MonitorStatus {
+  PENDING
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
+model Monitor {
+  id                  String        @id @default(uuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  url                 String
+  method              HttpMethod    @default(GET)
+  headersEnc          String?
+  bodyEnc             String?
+  expectedStatus      Int           @default(200)
+  followRedirects     Boolean       @default(true)
+  intervalSec         Int
+  timeoutMs           Int           @default(10000)
+  responseThresholdMs Int           @default(1000)
+  failureThreshold    Int           @default(3)
+  slowThreshold       Int           @default(3)
+  status              MonitorStatus @default(PENDING)
+  isPaused            Boolean       @default(false)
+  failStreak          Int           @default(0)
+  slowStreak          Int           @default(0)
+  okStreak            Int           @default(0)
+  nextCheckAt         DateTime      @db.Timestamptz(3)
+  lastCheckedAt       DateTime?     @db.Timestamptz(3)
+  lastStatusCode      Int?
+  lastResponseTimeMs  Int?
+  lastStatusChangeAt  DateTime?     @db.Timestamptz(3)
+  tags                String[]
+  createdAt           DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([isPaused, nextCheckAt])
+  @@map("monitors")
 }
