@@ -11,7 +11,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "checkpoint:2": "node scripts/checkpoint2.mjs"
+    "checkpoint:2": "node scripts/checkpoint2.mjs",
+    "checkpoint:3": "node scripts/checkpoint3.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
@@ -28,6 +29,7 @@
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
+    "undici": "^8.12.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {

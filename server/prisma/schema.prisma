@@ -79,7 +79,46 @@ model Monitor {
   createdAt           DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
 
+    checks              Check[]
+
   @@index([userId, createdAt(sort: Desc)])
   @@index([isPaused, nextCheckAt])
   @@map("monitors")
+}
+
+enum CheckTrigger {
+  SCHEDULED
+  MANUAL
+}
+
+enum CheckOutcome {
+  SUCCESS
+  SLOW
+  FAILURE
+}
+
+enum FailureType {
+  TIMEOUT
+  DNS
+  CONNECTION
+  TLS
+  UNEXPECTED_STATUS
+  BLOCKED_TARGET
+  OTHER
+}
+
+model Check {
+  id             BigInt       @id @default(autoincrement())
+  monitorId      String
+  monitor        Monitor      @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  trigger        CheckTrigger
+  outcome        CheckOutcome
+  failureType    FailureType?
+  statusCode     Int?
+  responseTimeMs Int?
+  errorMessage   String?
+  checkedAt      DateTime     @db.Timestamptz(3)
+
+  @@index([monitorId, checkedAt(sort: Desc)])
+  @@map("checks")
 }

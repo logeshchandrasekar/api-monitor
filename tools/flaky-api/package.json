@@ -1,0 +1,10 @@
+{
+  "name": "flaky-api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Tiny, dependency-free test target for API Monitor",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

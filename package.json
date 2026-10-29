@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
-    "db:logs": "docker compose logs -f db"
+    "db:logs": "docker compose logs -f db",
+    "flaky": "node tools/flaky-api/server.js"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",
