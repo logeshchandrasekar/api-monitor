@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CheckFailure, classifyError, failureMessage, type FailureType } from "../utils/errorMessages.js";
+import {
+  CheckFailure,
+  classifyError,
+  failureMessage,
+  type FailureType,
+} from "../utils/errorMessages.js";
 
-const withCode = (code: string, extra: object = {}) => Object.assign(new Error(`raw ${code} text`), { code, ...extra });
+const withCode = (code: string, extra: object = {}) =>
+  Object.assign(new Error(`raw ${code} text`), { code, ...extra });
 
 describe("classifyError", () => {
   const table: [string, unknown, FailureType][] = [
@@ -30,12 +36,21 @@ describe("classifyError", () => {
   });
 
   it("finds the code in err.cause (undici wraps connect errors)", () => {
-    expect(classifyError(new Error("fetch failed", { cause: withCode("ECONNREFUSED") }))).toBe("CONNECTION");
-    expect(classifyError(new Error("outer", { cause: new Error("mid", { cause: withCode("ENOTFOUND") }) }))).toBe("DNS");
+    expect(classifyError(new Error("fetch failed", { cause: withCode("ECONNREFUSED") }))).toBe(
+      "CONNECTION",
+    );
+    expect(
+      classifyError(
+        new Error("outer", { cause: new Error("mid", { cause: withCode("ENOTFOUND") }) }),
+      ),
+    ).toBe("DNS");
   });
 
   it("finds the code inside an AggregateError (IPv4 + IPv6 attempts)", () => {
-    const agg = new AggregateError([withCode("ECONNREFUSED"), withCode("ECONNREFUSED")], "all failed");
+    const agg = new AggregateError(
+      [withCode("ECONNREFUSED"), withCode("ECONNREFUSED")],
+      "all failed",
+    );
     expect(classifyError(agg)).toBe("CONNECTION");
   });
 
@@ -52,7 +67,15 @@ describe("classifyError", () => {
 
 describe("failureMessage", () => {
   it("has a friendly message for every type, with no raw codes", () => {
-    const types: FailureType[] = ["TIMEOUT", "DNS", "CONNECTION", "TLS", "UNEXPECTED_STATUS", "BLOCKED_TARGET", "OTHER"];
+    const types: FailureType[] = [
+      "TIMEOUT",
+      "DNS",
+      "CONNECTION",
+      "TLS",
+      "UNEXPECTED_STATUS",
+      "BLOCKED_TARGET",
+      "OTHER",
+    ];
     for (const t of types) {
       const m = failureMessage(t, { timeoutMs: 10_000, expectedStatus: 200, actualStatus: 500 });
       expect(m.length).toBeGreaterThan(10);

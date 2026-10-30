@@ -15,7 +15,9 @@
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f db",
-    "flaky": "node tools/flaky-api/server.js"
+    "flaky": "node tools/flaky-api/server.js",
+    "flaky:down": "node tools/flaky-api/ctl.js down",
+    "flaky:up": "node tools/flaky-api/ctl.js up"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",

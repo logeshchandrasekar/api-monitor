@@ -12,6 +12,10 @@ export const runNow: RequestHandler = async (req, res) => {
 };
 
 export const list: RequestHandler = async (req, res) => {
-  const { items, nextCursor } = await listChecks(req.user!, idOf(res), validated<ListChecksQuery>(res, "query"));
+  const { items, nextCursor } = await listChecks(
+    req.user!,
+    idOf(res),
+    validated<ListChecksQuery>(res, "query"),
+  );
   res.json({ items: items.map(serializeCheck), nextCursor });
 };

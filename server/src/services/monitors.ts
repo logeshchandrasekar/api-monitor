@@ -10,6 +10,7 @@ import { decrypt, encrypt } from "../utils/crypto.js";
 import { AppError } from "../utils/errors.js";
 import { decryptHeaders, encryptHeaders, headersKey, resolveHeaders } from "../utils/headers.js";
 import { validateTargetUrl } from "../utils/url-guard.js";
+import { resolveOpenIncidents } from "./incidentLifecycle.js";
 
 export type Owner = { id: string; plan: PlanName };
 
@@ -86,6 +87,7 @@ async function insertWithinLimit(
 
 /** Back to "never checked": used after a material edit and on resume. */
 const freshState = (now: Date) => ({
+  stateEpoch: { increment: 1 }, // check results that started before this moment are now stale (Phase 4)
   status: "PENDING" as const,
   failStreak: 0,
   slowStreak: 0,
@@ -171,27 +173,31 @@ export async function updateMonitor(owner: Owner, id: string, input: UpdateMonit
   const soonest = new Date(now.getTime() + intervalSec * 1000);
 
   // TODO(Phase 4): when `material` is true, also resolve open incidents with CONFIG_CHANGED
-  return prisma.monitor.update({
-    where: { id },
-    data: {
-      name: input.name ?? existing.name,
-      description: input.description !== undefined ? input.description : existing.description,
-      url,
-      method,
-      headersEnc: encryptHeaders(headers),
-      bodyEnc: body ? encrypt(body) : null,
-      expectedStatus,
-      followRedirects,
-      intervalSec,
-      timeoutMs,
-      responseThresholdMs: input.responseThresholdMs ?? existing.responseThresholdMs,
-      tags: input.tags ? dedupe(input.tags) : existing.tags,
-      ...(material
-        ? freshState(now)
-        : intervalSec !== existing.intervalSec
-          ? { nextCheckAt: existing.nextCheckAt < soonest ? existing.nextCheckAt : soonest }
-          : {}),
-    },
+  return prisma.$transaction(async (tx) => {
+    // Takes the monitor row lock first, then resolves incidents. A check result for the old configuration can no longer slip in between.
+    if (material) await resolveOpenIncidents(tx, id, "CONFIG_CHANGED", now);
+    return tx.monitor.update({
+      where: { id },
+      data: {
+        name: input.name ?? existing.name,
+        description: input.description !== undefined ? input.description : existing.description,
+        url,
+        method,
+        headersEnc: encryptHeaders(headers),
+        bodyEnc: body ? encrypt(body) : null,
+        expectedStatus,
+        followRedirects,
+        intervalSec,
+        timeoutMs,
+        responseThresholdMs: input.responseThresholdMs ?? existing.responseThresholdMs,
+        tags: input.tags ? dedupe(input.tags) : existing.tags,
+        ...(material
+          ? freshState(now)
+          : intervalSec !== existing.intervalSec
+            ? { nextCheckAt: existing.nextCheckAt < soonest ? existing.nextCheckAt : soonest }
+            : {}),
+      },
+    });
   });
 }
 
@@ -204,7 +210,14 @@ export async function pauseMonitor(userId: string, id: string) {
   const monitor = await findOwned(userId, id);
   if (monitor.isPaused) return monitor;
   // TODO(Phase 4): resolve open incidents with PAUSED
-  return prisma.monitor.update({ where: { id }, data: { isPaused: true } });
+  const now = new Date();
+  return prisma.$transaction(async (tx) => {
+    await resolveOpenIncidents(tx, id, "PAUSED", now);
+    return tx.monitor.update({
+      where: { id },
+      data: { isPaused: true, stateEpoch: { increment: 1 } },
+    });
+  });
 }
 
 export async function resumeMonitor(userId: string, id: string) {

@@ -43,7 +43,8 @@ export async function runTick(run?: CheckRunner): Promise<number> {
   // allSettled: one check blowing up never stops the others (or the loop)
   const results = await Promise.allSettled(monitors.map((m) => executeScheduledCheck(m, run)));
   results.forEach((r, i) => {
-    if (r.status === "rejected") logger.error({ err: r.reason, monitorId: monitors[i]?.id }, "scheduled check crashed");
+    if (r.status === "rejected")
+      logger.error({ err: r.reason, monitorId: monitors[i]?.id }, "scheduled check crashed");
   });
   return monitors.length;
 }

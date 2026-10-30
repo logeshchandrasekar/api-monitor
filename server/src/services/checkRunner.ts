@@ -1,7 +1,12 @@
 import { Agent, request } from "undici";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/errors.js";
-import { CheckFailure, classifyError, failureMessage, type FailureType } from "../utils/errorMessages.js";
+import {
+  CheckFailure,
+  classifyError,
+  failureMessage,
+  type FailureType,
+} from "../utils/errorMessages.js";
 import { isSensitiveHeader, type StoredHeader } from "../utils/headers.js";
 import { createSafeLookup, type Resolve } from "../utils/safeLookup.js";
 import { parseTargetUrl } from "../utils/url-guard.js";
@@ -95,7 +100,10 @@ export function createCheckRunner(deps: RunnerDeps = {}): CheckRunner {
     // AbortSignal (timeoutMs) is the only thing that decides when a check times out.
     connect: {
       timeout: 30_000,
-      lookup: createSafeLookup({ allowPrivate, ...(deps.resolve ? { resolve: deps.resolve } : {}) }),
+      lookup: createSafeLookup({
+        allowPrivate,
+        ...(deps.resolve ? { resolve: deps.resolve } : {}),
+      }),
     },
   });
 
@@ -143,7 +151,10 @@ export function createCheckRunner(deps: RunnerDeps = {}): CheckRunner {
       if (next.origin !== url.origin) headers = headers.filter((h) => !isSensitiveHeader(h.name));
 
       // 303 (and 301/302 after a non-GET) turn into a body-less GET; 307/308 keep method and body
-      if (status === 303 || ((status === 301 || status === 302) && method !== "GET" && method !== "HEAD")) {
+      if (
+        status === 303 ||
+        ((status === 301 || status === 302) && method !== "GET" && method !== "HEAD")
+      ) {
         if (method !== "HEAD") method = "GET";
         body = null;
         headers = headers.filter((h) => !/^content-(type|length)$/i.test(h.name));

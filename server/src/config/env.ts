@@ -13,15 +13,15 @@ const schema = z.object({
       (v) => Buffer.from(v, "base64").length === 32,
       "ENCRYPTION_KEY must be 32 bytes, base64-encoded",
     ),
-    ALLOW_PRIVATE_TARGETS: z
+  ALLOW_PRIVATE_TARGETS: z
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
-    ENABLE_SCHEDULER: z
+  ENABLE_SCHEDULER: z
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
-    SCHEDULER_TICK_MS: z.coerce.number().int().min(500).max(60_000).default(15_000),
+  SCHEDULER_TICK_MS: z.coerce.number().int().min(500).max(60_000).default(15_000),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 

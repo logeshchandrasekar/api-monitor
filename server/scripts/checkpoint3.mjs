@@ -11,7 +11,10 @@ class Session {
   async call(method, path, body) {
     const res = await fetch(BASE + path, {
       method,
-      headers: { "Content-Type": "application/json", ...(this.cookie ? { Cookie: this.cookie } : {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(this.cookie ? { Cookie: this.cookie } : {}),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const setCookie = res.headers.getSetCookie?.()[0];
@@ -68,12 +71,15 @@ const make = async (name, url, extra = {}) => {
   return res.json.monitor.id;
 };
 const okId = await make("cp3 ok", "http://localhost:4100/ok");
-const slowId = await make("cp3 slow", "http://localhost:4100/slow?ms=2000", { responseThresholdMs: 1000 });
+const slowId = await make("cp3 slow", "http://localhost:4100/slow?ms=2000", {
+  responseThresholdMs: 1000,
+});
 const badId = await make("cp3 500", "http://localhost:4100/status/500");
 const deadId = await make("cp3 dead port", "http://localhost:4199/");
 const all = [okId, slowId, badId, deadId];
 
-const checksOf = async (id, extra = "") => (await s.call("GET", `/monitors/${id}/checks?limit=100${extra}`)).json?.items ?? [];
+const checksOf = async (id, extra = "") =>
+  (await s.call("GET", `/monitors/${id}/checks?limit=100${extra}`)).json?.items ?? [];
 const scheduled = async (id) => (await checksOf(id)).filter((c) => c.trigger === "SCHEDULED");
 
 // ---- 1. checks appear on their own ---------------------------------------------------------
@@ -84,31 +90,72 @@ while (Date.now() < deadline) {
   if (counts.every((n) => n >= 3)) break;
   await sleep(2000);
 }
-const sched = Object.fromEntries(await Promise.all(all.map(async (id) => [id, await scheduled(id)])));
-check("every monitor produced at least 3 scheduled checks on its own", all.every((id) => sched[id].length >= 3),
-  all.map((id) => sched[id].length).join("/"));
+const sched = Object.fromEntries(
+  await Promise.all(all.map(async (id) => [id, await scheduled(id)])),
+);
+check(
+  "every monitor produced at least 3 scheduled checks on its own",
+  all.every((id) => sched[id].length >= 3),
+  all.map((id) => sched[id].length).join("/"),
+);
 
 const times = sched[okId].map((c) => new Date(c.checkedAt).getTime()).sort((a, b) => a - b);
 const gaps = times.slice(1).map((t, i) => (t - times[i]) / 1000);
 const median = gaps.length ? [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)] : NaN;
-check(`10 s monitor: checks are about 10 s apart (median ${median.toFixed(1)} s)`, median >= 8 && median <= 14);
+check(
+  `10 s monitor: checks are about 10 s apart (median ${median.toFixed(1)} s)`,
+  median >= 8 && median <= 14,
+);
 
 // ---- 2. classification ---------------------------------------------------------------------
 const all_ = (id, fn) => sched[id].length > 0 && sched[id].every(fn);
-check("/ok -> SUCCESS, status 200", all_(okId, (c) => c.outcome === "SUCCESS" && c.statusCode === 200));
-check("/slow?ms=2000 -> SLOW (up, but over the 1 s threshold)", all_(slowId, (c) => c.outcome === "SLOW" && c.failureType === null && c.responseTimeMs >= 1900));
-check("/status/500 -> FAILURE / UNEXPECTED_STATUS", all_(badId, (c) => c.outcome === "FAILURE" && c.failureType === "UNEXPECTED_STATUS" && c.statusCode === 500));
-check("dead port -> FAILURE / CONNECTION", all_(deadId, (c) => c.outcome === "FAILURE" && c.failureType === "CONNECTION" && c.statusCode === null));
+check(
+  "/ok -> SUCCESS, status 200",
+  all_(okId, (c) => c.outcome === "SUCCESS" && c.statusCode === 200),
+);
+check(
+  "/slow?ms=2000 -> SLOW (up, but over the 1 s threshold)",
+  all_(slowId, (c) => c.outcome === "SLOW" && c.failureType === null && c.responseTimeMs >= 1900),
+);
+check(
+  "/status/500 -> FAILURE / UNEXPECTED_STATUS",
+  all_(
+    badId,
+    (c) => c.outcome === "FAILURE" && c.failureType === "UNEXPECTED_STATUS" && c.statusCode === 500,
+  ),
+);
+check(
+  "dead port -> FAILURE / CONNECTION",
+  all_(
+    deadId,
+    (c) => c.outcome === "FAILURE" && c.failureType === "CONNECTION" && c.statusCode === null,
+  ),
+);
 const messages = all.flatMap((id) => sched[id].map((c) => c.errorMessage ?? ""));
-check("error messages are human-readable (no raw codes like ECONNREFUSED)", !messages.some((m) => /E[A-Z]{3,}|ERR_|UND_/.test(m)));
+check(
+  "error messages are human-readable (no raw codes like ECONNREFUSED)",
+  !messages.some((m) => /E[A-Z]{3,}|ERR_|UND_/.test(m)),
+);
 
 // ---- 3. manual check -----------------------------------------------------------------------
 const before = (await s.call("GET", `/monitors/${okId}`)).json.monitor;
 const manual = await s.call("POST", `/monitors/${okId}/check`);
-check("manual check -> 201 with trigger MANUAL and the result", manual.status === 201 && manual.json?.check?.trigger === "MANUAL" && manual.json?.check?.outcome === "SUCCESS", manual.text);
+check(
+  "manual check -> 201 with trigger MANUAL and the result",
+  manual.status === 201 &&
+    manual.json?.check?.trigger === "MANUAL" &&
+    manual.json?.check?.outcome === "SUCCESS",
+  manual.text,
+);
 const after = (await s.call("GET", `/monitors/${okId}`)).json.monitor;
-check("manual check does not change status and is not copied onto the monitor", before.status === after.status && after.lastCheckedAt !== manual.json?.check?.checkedAt);
-check("manual check shows up in the check list", (await checksOf(okId)).some((c) => c.trigger === "MANUAL"));
+check(
+  "manual check does not change status and is not copied onto the monitor",
+  before.status === after.status && after.lastCheckedAt !== manual.json?.check?.checkedAt,
+);
+check(
+  "manual check shows up in the check list",
+  (await checksOf(okId)).some((c) => c.trigger === "MANUAL"),
+);
 
 // ---- 4. pause / resume ---------------------------------------------------------------------
 await s.call("POST", `/monitors/${okId}/pause`);
@@ -116,7 +163,10 @@ await sleep(1500); // let a check that was already in flight finish
 const pausedCount = (await scheduled(okId)).length;
 console.log("\nMonitor paused. Waiting 22 s to prove nothing runs...");
 await sleep(22_000);
-check("paused monitor: no new scheduled checks in 22 s", (await scheduled(okId)).length === pausedCount);
+check(
+  "paused monitor: no new scheduled checks in 22 s",
+  (await scheduled(okId)).length === pausedCount,
+);
 
 await s.call("POST", `/monitors/${okId}/resume`);
 let resumed = false;
@@ -132,14 +182,28 @@ for (let i = 0; i < 8 && !limited; i++) {
   const r = await s.call("POST", `/monitors/${deadId}/check`);
   if (r.status === 429) limited = r;
 }
-check("manual checks are rate limited (429 RATE_LIMITED)", limited?.json?.error?.code === "RATE_LIMITED", limited ? "" : "never got 429");
+check(
+  "manual checks are rate limited (429 RATE_LIMITED)",
+  limited?.json?.error?.code === "RATE_LIMITED",
+  limited ? "" : "never got 429",
+);
 
 // ---- 6. ownership --------------------------------------------------------------------------
 const other = new Session();
-await other.call("POST", "/auth/register", { name: "CP3 b", email: `cp3b-${Date.now()}@example.com`, password: "correct-horse-battery" });
-check("another user gets 404 on check and check list", (await other.call("POST", `/monitors/${okId}/check`)).status === 404 && (await other.call("GET", `/monitors/${okId}/checks`)).status === 404);
+await other.call("POST", "/auth/register", {
+  name: "CP3 b",
+  email: `cp3b-${Date.now()}@example.com`,
+  password: "correct-horse-battery",
+});
+check(
+  "another user gets 404 on check and check list",
+  (await other.call("POST", `/monitors/${okId}/check`)).status === 404 &&
+    (await other.call("GET", `/monitors/${okId}/checks`)).status === 404,
+);
 
-console.log(failures === 0
-  ? "\nAll automated checks passed. Now do the manual checks from the chapter (restart test, redirect test, Ctrl+C test)."
-  : `\n${failures} check(s) FAILED`);
+console.log(
+  failures === 0
+    ? "\nAll automated checks passed. Now do the manual checks from the chapter (restart test, redirect test, Ctrl+C test)."
+    : `\n${failures} check(s) FAILED`,
+);
 process.exit(failures === 0 ? 0 : 1);

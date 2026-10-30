@@ -18,7 +18,10 @@ const result = (overrides: Partial<CheckResult> = {}): CheckResult => ({
   checkedAt: new Date(),
   ...overrides,
 });
-const stub = (r: CheckResult = result()): CheckRunner => async () => r;
+const stub =
+  (r: CheckResult = result()): CheckRunner =>
+  async () =>
+    r;
 
 afterEach(() => setCheckRunner(null));
 
@@ -36,7 +39,12 @@ describe("POST /api/monitors/:id/check (manual check)", () => {
 
     const res = await agent.post(`/api/monitors/${id}/check`);
     expect(res.status).toBe(201);
-    expect(res.body.check).toMatchObject({ trigger: "MANUAL", outcome: "SUCCESS", statusCode: 200, responseTimeMs: 42 });
+    expect(res.body.check).toMatchObject({
+      trigger: "MANUAL",
+      outcome: "SUCCESS",
+      statusCode: 200,
+      responseTimeMs: 42,
+    });
     expect(typeof res.body.check.id).toBe("string"); // BigInt id, serialised as a string
     expect(res.body.check).not.toHaveProperty("monitorId");
 
@@ -45,17 +53,34 @@ describe("POST /api/monitors/:id/check (manual check)", () => {
     expect(rows[0]?.trigger).toBe("MANUAL");
 
     const monitor = await prisma.monitor.findUniqueOrThrow({ where: { id } });
-    expect(monitor).toMatchObject({ status: "PENDING", lastCheckedAt: null, lastStatusCode: null, failStreak: 0 });
+    expect(monitor).toMatchObject({
+      status: "PENDING",
+      lastCheckedAt: null,
+      lastStatusCode: null,
+      failStreak: 0,
+    });
   });
 
   it("stores failures too, and a failing manual check never changes the monitor", async () => {
     setCheckRunner(
-      stub(result({ outcome: "FAILURE", failureType: "CONNECTION", statusCode: null, responseTimeMs: null, errorMessage: "Could not connect to the server. It may be down or refusing connections." })),
+      stub(
+        result({
+          outcome: "FAILURE",
+          failureType: "CONNECTION",
+          statusCode: null,
+          responseTimeMs: null,
+          errorMessage: "Could not connect to the server. It may be down or refusing connections.",
+        }),
+      ),
     );
     const agent = await registerAgent();
     const id = await newMonitor(agent);
     const res = await agent.post(`/api/monitors/${id}/check`);
-    expect(res.body.check).toMatchObject({ outcome: "FAILURE", failureType: "CONNECTION", statusCode: null });
+    expect(res.body.check).toMatchObject({
+      outcome: "FAILURE",
+      failureType: "CONNECTION",
+      statusCode: null,
+    });
     expect((await prisma.monitor.findUniqueOrThrow({ where: { id } })).status).toBe("PENDING");
   });
 
@@ -106,7 +131,10 @@ describe("POST /api/monitors/:id/check (manual check)", () => {
   });
 
   it("rejects anonymous requests and malformed ids", async () => {
-    expect((await request(createApp()).post("/api/monitors/00000000-0000-4000-8000-000000000000/check")).status).toBe(401);
+    expect(
+      (await request(createApp()).post("/api/monitors/00000000-0000-4000-8000-000000000000/check"))
+        .status,
+    ).toBe(401);
     const agent = await registerAgent();
     expect((await agent.post("/api/monitors/not-a-uuid/check")).status).toBe(400);
   });
@@ -144,7 +172,8 @@ describe("POST /api/monitors/:id/check (manual check)", () => {
     const idA = await newMonitor(a);
     const idB = await newMonitor(b);
 
-    for (let i = 0; i < 6; i++) expect((await a.post(`/api/monitors/${idA}/check`)).status).toBe(201);
+    for (let i = 0; i < 6; i++)
+      expect((await a.post(`/api/monitors/${idA}/check`)).status).toBe(201);
     const limited = await a.post(`/api/monitors/${idA}/check`);
     expect(limited.status).toBe(429);
     expect(limited.body.error.code).toBe("RATE_LIMITED");
@@ -157,7 +186,14 @@ describe("GET /api/monitors/:id/checks", () => {
   const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
   const seedChecks = (monitorId: string, ages: number[]) =>
     prisma.check.createMany({
-      data: ages.map((age) => ({ monitorId, trigger: "SCHEDULED" as const, outcome: "SUCCESS" as const, statusCode: 200, responseTimeMs: 100, checkedAt: minutesAgo(age) })),
+      data: ages.map((age) => ({
+        monitorId,
+        trigger: "SCHEDULED" as const,
+        outcome: "SUCCESS" as const,
+        statusCode: 200,
+        responseTimeMs: 100,
+        checkedAt: minutesAgo(age),
+      })),
     });
 
   it("paginates with a cursor, newest first, ids as strings", async () => {
@@ -171,13 +207,20 @@ describe("GET /api/monitors/:id/checks", () => {
     expect(typeof first.body.items[0].id).toBe("string");
     expect(first.body.nextCursor).toEqual(first.body.items[1].id);
 
-    const second = await agent.get(`/api/monitors/${id}/checks?limit=2&cursor=${first.body.nextCursor}`);
-    const third = await agent.get(`/api/monitors/${id}/checks?limit=2&cursor=${second.body.nextCursor}`);
+    const second = await agent.get(
+      `/api/monitors/${id}/checks?limit=2&cursor=${first.body.nextCursor}`,
+    );
+    const third = await agent.get(
+      `/api/monitors/${id}/checks?limit=2&cursor=${second.body.nextCursor}`,
+    );
     expect(second.body.items).toHaveLength(2);
     expect(third.body.items).toHaveLength(1);
     expect(third.body.nextCursor).toBeNull();
 
-    const all = [...first.body.items, ...second.body.items, ...third.body.items] as { id: string; checkedAt: string }[];
+    const all = [...first.body.items, ...second.body.items, ...third.body.items] as {
+      id: string;
+      checkedAt: string;
+    }[];
     expect(new Set(all.map((c) => c.id)).size).toBe(5);
     const times = all.map((c) => new Date(c.checkedAt).getTime());
     expect(times).toEqual([...times].sort((x, y) => y - x)); // strictly newest first across pages
@@ -187,7 +230,8 @@ describe("GET /api/monitors/:id/checks", () => {
     const agent = await registerAgent("pro@example.com", "PRO");
     const id = await newMonitor(agent, { intervalSec: 60 });
     await seedChecks(id, [30, 180, 3 * 24 * 60]); // 30 min, 3 h, 3 days ago
-    const count = async (range: string) => (await agent.get(`/api/monitors/${id}/checks?range=${range}`)).body.items.length;
+    const count = async (range: string) =>
+      (await agent.get(`/api/monitors/${id}/checks?range=${range}`)).body.items.length;
     expect(await count("1h")).toBe(1);
     expect(await count("24h")).toBe(2);
     expect(await count("7d")).toBe(3);
@@ -210,7 +254,10 @@ describe("GET /api/monitors/:id/checks", () => {
     await seedChecks(id, [5]);
     await agent.post(`/api/monitors/${id}/check`);
     const res = await agent.get(`/api/monitors/${id}/checks`);
-    expect(res.body.items.map((c: { trigger: string }) => c.trigger).sort()).toEqual(["MANUAL", "SCHEDULED"]);
+    expect(res.body.items.map((c: { trigger: string }) => c.trigger).sort()).toEqual([
+      "MANUAL",
+      "SCHEDULED",
+    ]);
   });
 
   it("is 404 for someone else's monitor and for unknown ids (SEC-4)", async () => {
@@ -219,7 +266,9 @@ describe("GET /api/monitors/:id/checks", () => {
     const id = await newMonitor(a);
     await seedChecks(id, [5]);
     expect((await b.get(`/api/monitors/${id}/checks`)).status).toBe(404);
-    expect((await a.get("/api/monitors/00000000-0000-4000-8000-000000000000/checks")).status).toBe(404);
+    expect((await a.get("/api/monitors/00000000-0000-4000-8000-000000000000/checks")).status).toBe(
+      404,
+    );
   });
 
   it("rejects bad query values", async () => {

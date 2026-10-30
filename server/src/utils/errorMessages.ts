@@ -1,11 +1,5 @@
 export type FailureType =
-  | "TIMEOUT"
-  | "DNS"
-  | "CONNECTION"
-  | "TLS"
-  | "UNEXPECTED_STATUS"
-  | "BLOCKED_TARGET"
-  | "OTHER";
+  "TIMEOUT" | "DNS" | "CONNECTION" | "TLS" | "UNEXPECTED_STATUS" | "BLOCKED_TARGET" | "OTHER";
 
 /** Thrown by the runner for failures where we already know the type and the user-facing text. */
 export class CheckFailure extends Error {
@@ -36,7 +30,8 @@ const CONNECTION_CODES = new Set([
   "UND_ERR_CLOSED",
 ]);
 // EPROTO is what OpenSSL reports when the other side does not speak TLS (e.g. https:// to a plain-HTTP port)
-const TLS_CODE_RE = /^(CERT_|ERR_TLS|ERR_SSL|SELF_SIGNED|DEPTH_ZERO|UNABLE_TO_(VERIFY|GET)|HOSTNAME_MISMATCH|EPROTO)/;
+const TLS_CODE_RE =
+  /^(CERT_|ERR_TLS|ERR_SSL|SELF_SIGNED|DEPTH_ZERO|UNABLE_TO_(VERIFY|GET)|HOSTNAME_MISMATCH|EPROTO)/;
 
 /** Walks err, err.cause and AggregateError.errors, collecting every `code` it finds. */
 function collectCodes(err: unknown, depth = 0, out: string[] = []): string[] {

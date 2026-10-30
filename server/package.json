@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "checkpoint:2": "node scripts/checkpoint2.mjs",
-    "checkpoint:3": "node scripts/checkpoint3.mjs"
+    "checkpoint:3": "node scripts/checkpoint3.mjs",
+    "checkpoint:4": "node scripts/checkpoint4.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",

@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createCheckRunner, MAX_BODY_BYTES, USER_AGENT, type CheckInput } from "../services/checkRunner.js";
+import {
+  createCheckRunner,
+  MAX_BODY_BYTES,
+  USER_AGENT,
+  type CheckInput,
+} from "../services/checkRunner.js";
 import { parseTargetUrl } from "../utils/url-guard.js";
 import { closedPort, startCaptureServer, startTestServer, type TestServer } from "./testServer.js";
 
@@ -30,14 +35,24 @@ const lax = createCheckRunner({ allowPrivate: true });
 describe("outcome classification", () => {
   it("SUCCESS: expected status, fast", async () => {
     const r = await lax(input(`${a.url}/ok`));
-    expect(r).toMatchObject({ outcome: "SUCCESS", failureType: null, statusCode: 200, errorMessage: null });
+    expect(r).toMatchObject({
+      outcome: "SUCCESS",
+      failureType: null,
+      statusCode: 200,
+      errorMessage: null,
+    });
     expect(r.responseTimeMs).toBeGreaterThanOrEqual(0);
     expect(r.responseTimeMs).toBeLessThan(1000);
   });
 
   it("SLOW: expected status, slower than the threshold (not a failure)", async () => {
     const r = await lax(input(`${a.url}/slow?ms=250`, { responseThresholdMs: 100 }));
-    expect(r).toMatchObject({ outcome: "SLOW", failureType: null, statusCode: 200, errorMessage: null });
+    expect(r).toMatchObject({
+      outcome: "SLOW",
+      failureType: null,
+      statusCode: 200,
+      errorMessage: null,
+    });
     expect(r.responseTimeMs).toBeGreaterThanOrEqual(240);
   });
 
@@ -53,8 +68,12 @@ describe("outcome classification", () => {
   });
 
   it("expectedStatus can be any code, e.g. 404 or 204", async () => {
-    expect((await lax(input(`${a.url}/status/404`, { expectedStatus: 404 }))).outcome).toBe("SUCCESS");
-    expect((await lax(input(`${a.url}/status/204`, { expectedStatus: 204 }))).outcome).toBe("SUCCESS");
+    expect((await lax(input(`${a.url}/status/404`, { expectedStatus: 404 }))).outcome).toBe(
+      "SUCCESS",
+    );
+    expect((await lax(input(`${a.url}/status/204`, { expectedStatus: 204 }))).outcome).toBe(
+      "SUCCESS",
+    );
   });
 });
 
@@ -62,7 +81,12 @@ describe("network failures", () => {
   it("TIMEOUT: gives up at timeoutMs, not when the server answers", async () => {
     const t0 = performance.now();
     const r = await lax(input(`${a.url}/slow?ms=5000`, { timeoutMs: 300 }));
-    expect(r).toMatchObject({ outcome: "FAILURE", failureType: "TIMEOUT", statusCode: null, responseTimeMs: null });
+    expect(r).toMatchObject({
+      outcome: "FAILURE",
+      failureType: "TIMEOUT",
+      statusCode: null,
+      responseTimeMs: null,
+    });
     expect(r.errorMessage).toBe("No response within 0.3 seconds.");
     expect(performance.now() - t0).toBeLessThan(1500);
   });
@@ -80,7 +104,9 @@ describe("network failures", () => {
 
   it("DNS: the name does not resolve (fake resolver, no real DNS lookup)", async () => {
     const resolve = async () => {
-      throw Object.assign(new Error("getaddrinfo ENOTFOUND nope.example.com"), { code: "ENOTFOUND" });
+      throw Object.assign(new Error("getaddrinfo ENOTFOUND nope.example.com"), {
+        code: "ENOTFOUND",
+      });
     };
     const runner = createCheckRunner({ allowPrivate: false, resolve });
     const r = await runner(input("https://nope.example.com/"));
@@ -120,13 +146,19 @@ describe("SSRF at connection time (SEC-1)", () => {
       { address: "93.184.216.34", family: 4 },
       { address: "10.0.0.8", family: 4 },
     ];
-    const r = await createCheckRunner({ allowPrivate: false, resolve })(input("http://mixed.example.com/"));
+    const r = await createCheckRunner({ allowPrivate: false, resolve })(
+      input("http://mixed.example.com/"),
+    );
     expect(r.failureType).toBe("BLOCKED_TARGET");
   });
 
   it("blocks private literal IPs in strict mode without connecting", async () => {
     const strict = createCheckRunner({ allowPrivate: false });
-    for (const url of ["http://127.0.0.1/", "http://169.254.169.254/latest/meta-data/", "http://[::1]/"]) {
+    for (const url of [
+      "http://127.0.0.1/",
+      "http://169.254.169.254/latest/meta-data/",
+      "http://[::1]/",
+    ]) {
       expect((await strict(input(url))).failureType).toBe("BLOCKED_TARGET");
     }
   });
@@ -139,7 +171,11 @@ describe("SSRF at connection time (SEC-1)", () => {
         if (url.port !== String(a.port)) parseTargetUrl(url.href, { allowPrivate: false });
       },
     });
-    for (const target of ["http://127.0.0.1:9/secret", "http://169.254.169.254/latest/meta-data/", "http://[::ffff:7f00:1]/"]) {
+    for (const target of [
+      "http://127.0.0.1:9/secret",
+      "http://169.254.169.254/latest/meta-data/",
+      "http://[::ffff:7f00:1]/",
+    ]) {
       const r = await runner(input(`${a.url}/redirect?to=${encodeURIComponent(target)}`));
       expect(r).toMatchObject({ outcome: "FAILURE", failureType: "BLOCKED_TARGET" });
     }
@@ -166,7 +202,9 @@ describe("redirects", () => {
   });
 
   it("followRedirects=false: the 3xx itself is the response, so expectedStatus 302 works", async () => {
-    const asIs = await lax(input(`${a.url}/redirect`, { followRedirects: false, expectedStatus: 302 }));
+    const asIs = await lax(
+      input(`${a.url}/redirect`, { followRedirects: false, expectedStatus: 302 }),
+    );
     expect(asIs).toMatchObject({ outcome: "SUCCESS", statusCode: 302 });
     const wrong = await lax(input(`${a.url}/redirect`, { followRedirects: false }));
     expect(wrong).toMatchObject({ failureType: "UNEXPECTED_STATUS", statusCode: 302 });
@@ -178,7 +216,9 @@ describe("redirects", () => {
       { name: "X-Env", value: "prod" },
     ];
     const target = await startCaptureServer(); // a different origin (other port)
-    await lax(input(`${a.url}/redirect?to=${encodeURIComponent(`${target.url}/landing`)}`, { headers }));
+    await lax(
+      input(`${a.url}/redirect?to=${encodeURIComponent(`${target.url}/landing`)}`, { headers }),
+    );
     expect(target.seen[0]?.headers.authorization).toBeUndefined(); // sensitive header dropped
     expect(target.seen[0]?.headers["x-env"]).toBe("prod"); // harmless header kept
     await target.close();
@@ -200,10 +240,13 @@ describe("redirects", () => {
     ] as const) {
       const target = await startCaptureServer();
       const r = await lax(
-        input(`${a.url}/redirect-code?code=${code}&to=${encodeURIComponent(`${target.url}/landing`)}`, {
-          method: "POST",
-          body: '{"x":1}',
-        }),
+        input(
+          `${a.url}/redirect-code?code=${code}&to=${encodeURIComponent(`${target.url}/landing`)}`,
+          {
+            method: "POST",
+            body: '{"x":1}',
+          },
+        ),
       );
       expect(r.outcome).toBe("SUCCESS");
       expect(target.seen[0]).toMatchObject({ method, body });

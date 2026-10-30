@@ -23,7 +23,10 @@ const notFound = () => Object.assign(new Error("No addresses found"), { code: "E
  * connection only proceeds to an address that passed the check. Because the address we validate is the
  * address we connect to, DNS rebinding cannot swap in a private IP after validation (SEC-1).
  */
-export function createSafeLookup(opts: { allowPrivate: boolean; resolve?: Resolve }): LookupFunction {
+export function createSafeLookup(opts: {
+  allowPrivate: boolean;
+  resolve?: Resolve;
+}): LookupFunction {
   const resolve = opts.resolve ?? systemResolve;
   return (hostname, options, callback) => {
     resolve(hostname).then(

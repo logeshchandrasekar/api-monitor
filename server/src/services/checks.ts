@@ -6,7 +6,13 @@ import { decrypt } from "../utils/crypto.js";
 import { AppError } from "../utils/errors.js";
 import { decryptHeaders } from "../utils/headers.js";
 import { createLimiter } from "../utils/limiter.js";
-import { defaultRunner, type CheckInput, type CheckResult, type CheckRunner } from "./checkRunner.js";
+import { applyCheckResult } from "./applyCheckResult.js";
+import {
+  defaultRunner,
+  type CheckInput,
+  type CheckResult,
+  type CheckRunner,
+} from "./checkRunner.js";
 import { getMonitor, type MonitorRow, type Owner } from "./monitors.js";
 
 /** Global outbound cap (SEC-5): scheduled and manual checks share these 10 slots. */
@@ -73,26 +79,24 @@ const insertCheck = (monitorId: string, trigger: "SCHEDULED" | "MANUAL", r: Chec
 export type CheckRow = Awaited<ReturnType<typeof insertCheck>>;
 
 /**
- * A scheduled check: stored, and copied onto the monitor's denormalised `last*` columns in one
- * transaction. (Phase 4 adds the state machine here.) Never throws.
+ * A scheduled check: run, then handed to applyCheckResult, which stores it, advances the status
+ * state machine and opens/closes incidents in one transaction (Phase 4). Never throws.
  */
-export async function executeScheduledCheck(m: MonitorRow, run: CheckRunner = activeRunner): Promise<void> {
+export async function executeScheduledCheck(
+  m: MonitorRow,
+  run: CheckRunner = activeRunner,
+): Promise<void> {
   const result = await measure(m, run);
   try {
-    await prisma.$transaction([
-      prisma.check.create({ data: checkData(m.id, "SCHEDULED", result) }),
-      prisma.monitor.update({
-        where: { id: m.id },
-        data: {
-          lastCheckedAt: result.checkedAt,
-          lastStatusCode: result.statusCode,
-          lastResponseTimeMs: result.responseTimeMs,
-        },
-      }),
-    ]);
+    const { applied } = await applyCheckResult(m, result); // m carries the stateEpoch it was claimed with
+    if (!applied) {
+      logger.debug(
+        { monitorId: m.id },
+        "check result discarded: monitor was deleted, paused or edited while it ran",
+      );
+    }
   } catch (err) {
-    // Most likely the monitor was deleted while its check was running: nothing left to record
-    logger.warn({ err, monitorId: m.id }, "could not store check result");
+    logger.error({ err, monitorId: m.id }, "could not apply check result");
   }
 }
 
@@ -101,7 +105,11 @@ export async function executeScheduledCheck(m: MonitorRow, run: CheckRunner = ac
  * `status`, streaks and the `last*` columns only ever reflect scheduled checks, so spamming this
  * button cannot create incidents or skew uptime.
  */
-export async function runManualCheck(userId: string, monitorId: string, run: CheckRunner = activeRunner): Promise<CheckRow> {
+export async function runManualCheck(
+  userId: string,
+  monitorId: string,
+  run: CheckRunner = activeRunner,
+): Promise<CheckRow> {
   const monitor = await getMonitor(userId, monitorId); // 404 if it is not yours (SEC-4)
   if (manualInFlight.has(monitor.id)) {
     throw new AppError(409, "CHECK_IN_PROGRESS", "A check is already running for this monitor.");

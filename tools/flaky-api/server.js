@@ -31,7 +31,9 @@ const server = http.createServer((req, res) => {
   const started = Date.now();
 
   res.on("finish", () => {
-    console.log(`${new Date().toISOString()}  ${req.method} ${req.url}  ->  ${res.statusCode}  (${Date.now() - started} ms)`);
+    console.log(
+      `${new Date().toISOString()}  ${req.method} ${req.url}  ->  ${res.statusCode}  (${Date.now() - started} ms)`,
+    );
   });
 
   const json = (status, body, headers = {}) => {
@@ -46,7 +48,8 @@ const server = http.createServer((req, res) => {
     if (path === "/admin/up") mode = "up";
     else {
       const wanted = url.searchParams.get("mode") ?? "503";
-      if (!OUTAGE_MODES.includes(wanted)) return json(400, { error: `mode must be one of ${OUTAGE_MODES.join(", ")}` });
+      if (!OUTAGE_MODES.includes(wanted))
+        return json(400, { error: `mode must be one of ${OUTAGE_MODES.join(", ")}` });
       mode = wanted;
     }
     return json(200, { mode });
@@ -66,13 +69,16 @@ const server = http.createServer((req, res) => {
 
   if (path.startsWith("/status/")) {
     const code = Number(path.split("/")[2]);
-    if (!Number.isInteger(code) || code < 200 || code > 599) return json(400, { error: "code must be 200-599" });
+    if (!Number.isInteger(code) || code < 200 || code > 599)
+      return json(400, { error: "code must be 200-599" });
     return json(code, { status: code });
   }
 
   if (path === "/flaky") {
     const p = Math.min(Math.max(Number(url.searchParams.get("p") ?? 0.3), 0), 1);
-    return Math.random() < p ? json(500, { error: "random failure", p }) : json(200, { ok: true, p });
+    return Math.random() < p
+      ? json(500, { error: "random failure", p })
+      : json(200, { ok: true, p });
   }
 
   if (path === "/redirect") {
@@ -88,8 +94,12 @@ const server = http.createServer((req, res) => {
   }
 
   if (path === "/big") {
-    const totalBytes = Math.min(Math.max(Number(url.searchParams.get("kb") ?? 4096) || 1, 1), 512_000) * 1024;
-    res.writeHead(200, { "content-type": "application/octet-stream", "content-length": String(totalBytes) });
+    const totalBytes =
+      Math.min(Math.max(Number(url.searchParams.get("kb") ?? 4096) || 1, 1), 512_000) * 1024;
+    res.writeHead(200, {
+      "content-type": "application/octet-stream",
+      "content-length": String(totalBytes),
+    });
     res.on("error", () => {}); // the client hangs up once it has read enough: that is expected
     const chunk = Buffer.alloc(64 * 1024, 97);
     let sent = 0;
@@ -108,7 +118,11 @@ const server = http.createServer((req, res) => {
     const chunks = [];
     req.on("data", (c) => chunks.push(c));
     return void req.on("end", () =>
-      json(200, { method: req.method, headers: req.headers, body: Buffer.concat(chunks).toString("utf8") }),
+      json(200, {
+        method: req.method,
+        headers: req.headers,
+        body: Buffer.concat(chunks).toString("utf8"),
+      }),
     );
   }
 

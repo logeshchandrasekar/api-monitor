@@ -70,6 +70,7 @@ model Monitor {
   failStreak          Int           @default(0)
   slowStreak          Int           @default(0)
   okStreak            Int           @default(0)
+  stateEpoch          Int           @default(0)
   nextCheckAt         DateTime      @db.Timestamptz(3)
   lastCheckedAt       DateTime?     @db.Timestamptz(3)
   lastStatusCode      Int?
@@ -79,7 +80,8 @@ model Monitor {
   createdAt           DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
 
-    checks              Check[]
+  checks              Check[]
+  incidents           Incident[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([isPaused, nextCheckAt])
@@ -121,4 +123,42 @@ model Check {
 
   @@index([monitorId, checkedAt(sort: Desc)])
   @@map("checks")
+}
+
+enum IncidentType {
+  DOWN
+  DEGRADED
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ResolutionReason {
+  RECOVERED
+  PAUSED
+  CONFIG_CHANGED
+}
+
+model Incident {
+  id           String            @id @default(uuid())
+  monitorId    String
+  monitor      Monitor           @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  type         IncidentType
+  status       IncidentStatus    @default(OPEN)
+  reason       String
+  failureType  FailureType?
+  failedChecks Int               @default(0)
+  startedAt    DateTime          @db.Timestamptz(3)
+  resolvedAt   DateTime?         @db.Timestamptz(3)
+  resolution   ResolutionReason?
+  durationSec  Int?
+  // "<monitorId>:<type>" while the incident is OPEN, NULL once it is resolved.
+  // The unique constraint therefore allows exactly one OPEN incident per monitor and type (DAT-1),
+  // while any number of resolved incidents (all with NULL) can exist.
+  openKey      String?           @unique
+
+  @@index([monitorId, startedAt(sort: Desc)])
+  @@map("incidents")
 }

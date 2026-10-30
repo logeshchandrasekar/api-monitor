@@ -37,7 +37,8 @@ async function seedMonitor(overrides: Partial<Prisma.MonitorUncheckedCreateInput
   });
 }
 
-const checksOf = (monitorId: string) => prisma.check.findMany({ where: { monitorId }, orderBy: { id: "asc" } });
+const checksOf = (monitorId: string) =>
+  prisma.check.findMany({ where: { monitorId }, orderBy: { id: "asc" } });
 
 describe("runTick", () => {
   it("runs a due monitor once, stores the check and the monitor's last* columns, and schedules the next run", async () => {
@@ -45,7 +46,12 @@ describe("runTick", () => {
     expect(await runTick(runner)).toBe(1);
 
     const [check] = await checksOf(m.id);
-    expect(check).toMatchObject({ trigger: "SCHEDULED", outcome: "SUCCESS", statusCode: 200, failureType: null });
+    expect(check).toMatchObject({
+      trigger: "SCHEDULED",
+      outcome: "SUCCESS",
+      statusCode: 200,
+      failureType: null,
+    });
     expect(typeof check!.id).toBe("bigint");
 
     const after = await prisma.monitor.findUniqueOrThrow({ where: { id: m.id } });
@@ -75,7 +81,10 @@ describe("runTick", () => {
 
   it("records failures with their type and clears the response columns", async () => {
     const wrongStatus = await seedMonitor({ name: "500", url: `${server.url}/status/500` });
-    const dead = await seedMonitor({ name: "dead", url: `http://127.0.0.1:${await closedPort()}/` });
+    const dead = await seedMonitor({
+      name: "dead",
+      url: `http://127.0.0.1:${await closedPort()}/`,
+    });
     await runTick(runner);
 
     expect((await checksOf(wrongStatus.id))[0]).toMatchObject({
@@ -84,7 +93,11 @@ describe("runTick", () => {
       statusCode: 500,
     });
     const [deadCheck] = await checksOf(dead.id);
-    expect(deadCheck).toMatchObject({ outcome: "FAILURE", failureType: "CONNECTION", statusCode: null });
+    expect(deadCheck).toMatchObject({
+      outcome: "FAILURE",
+      failureType: "CONNECTION",
+      statusCode: null,
+    });
     const deadAfter = await prisma.monitor.findUniqueOrThrow({ where: { id: dead.id } });
     expect(deadAfter).toMatchObject({ lastStatusCode: null, lastResponseTimeMs: null });
     expect(deadAfter.lastCheckedAt).not.toBeNull();

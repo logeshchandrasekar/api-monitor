@@ -11,18 +11,28 @@ export async function startTestServer(): Promise<TestServer> {
     req.on("data", (c: Buffer) => chunks.push(c));
     req.on("end", () => {
       const path = url.pathname;
-      const send = (status: number, body: unknown = { ok: true }, headers: Record<string, string> = {}) => {
+      const send = (
+        status: number,
+        body: unknown = { ok: true },
+        headers: Record<string, string> = {},
+      ) => {
         res.writeHead(status, { "content-type": "application/json", ...headers });
         res.end(JSON.stringify(body));
       };
 
       if (path === "/ok") return send(200);
       if (path.startsWith("/status/")) return send(Number(path.split("/")[2]));
-      if (path === "/slow") return void setTimeout(() => send(200), Number(url.searchParams.get("ms") ?? 100));
+      if (path === "/slow")
+        return void setTimeout(() => send(200), Number(url.searchParams.get("ms") ?? 100));
       if (path === "/hang") return; // never answers
-      if (path === "/redirect") return send(302, {}, { location: url.searchParams.get("to") ?? "/ok" });
+      if (path === "/redirect")
+        return send(302, {}, { location: url.searchParams.get("to") ?? "/ok" });
       if (path === "/redirect-code") {
-        return send(Number(url.searchParams.get("code") ?? 302), {}, { location: url.searchParams.get("to") ?? "/ok" });
+        return send(
+          Number(url.searchParams.get("code") ?? 302),
+          {},
+          { location: url.searchParams.get("to") ?? "/ok" },
+        );
       }
       if (path.startsWith("/hops/")) {
         const n = Number(path.split("/")[2]);
@@ -44,7 +54,11 @@ export async function startTestServer(): Promise<TestServer> {
         return write();
       }
       if (path === "/echo") {
-        return send(200, { method: req.method, headers: req.headers, body: Buffer.concat(chunks).toString("utf8") });
+        return send(200, {
+          method: req.method,
+          headers: req.headers,
+          body: Buffer.concat(chunks).toString("utf8"),
+        });
       }
       return send(404, { error: "not found" });
     });
@@ -70,7 +84,12 @@ export async function closedPort(): Promise<number> {
   return port;
 }
 
-export type Seen = { method?: string | undefined; url?: string | undefined; headers: http.IncomingHttpHeaders; body: string };
+export type Seen = {
+  method?: string | undefined;
+  url?: string | undefined;
+  headers: http.IncomingHttpHeaders;
+  body: string;
+};
 
 /**
  * Records every request it receives and answers 200 (except GET /r, which redirects to /landing on the
@@ -82,7 +101,12 @@ export async function startCaptureServer(): Promise<TestServer & { seen: Seen[] 
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => chunks.push(c));
     req.on("end", () => {
-      seen.push({ method: req.method, url: req.url, headers: req.headers, body: Buffer.concat(chunks).toString("utf8") });
+      seen.push({
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+        body: Buffer.concat(chunks).toString("utf8"),
+      });
       if (req.url === "/r") return void res.writeHead(302, { location: "/landing" }).end(); // same-origin redirect
       res.writeHead(200).end();
     });
