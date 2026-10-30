@@ -1,31 +1,43 @@
-import { useEffect, useState } from "react";
-
-type Health = { status: string; db: string; uptimeSec?: number };
+import { Route, Routes } from "react-router";
+import { Toaster } from "sonner";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
+import { useTheme } from "./hooks/useTheme";
+import { AppLayout } from "./layouts/AppLayout";
+import { AuthLayout } from "./layouts/AuthLayout";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { LoginPage } from "./pages/LoginPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch(() => setError("Cannot reach the API"));
-  }, []);
-
-  let message = "Checking backend...";
-  if (error) message = `🔴 ${error}`;
-  else if (health) {
-    message =
-      health.db === "up" ? "🟢 Backend and database are up" : "🟡 Backend up, database down";
-  }
-
+  const { resolved } = useTheme();
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 text-slate-100">
-      <div className="w-96 rounded-xl border border-slate-800 bg-slate-900 p-8">
-        <h1 className="text-xl font-semibold">API Monitor</h1>
-        <p className="mt-4 text-sm">{message}</p>
-      </div>
-    </main>
+    <>
+      <Routes>
+        {/* Logged-out only: a logged-in visitor is sent to the app */}
+        <Route element={<PublicOnlyRoute />}>
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
+        </Route>
+
+        {/* Logged-in only: a logged-out visitor is sent to /login and brought back afterwards */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="monitors" element={<ComingSoonPage title="Monitors" phase={6} />} />
+            <Route path="incidents" element={<ComingSoonPage title="Incidents" phase={6} />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+      <Toaster theme={resolved} position="top-right" richColors closeButton />
+    </>
   );
 }

@@ -1,1 +1,45 @@
 @import "tailwindcss";
+
+/* Dark mode is driven by a `dark` class on <html> (set by ThemeProvider and by the script in index.html) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Status colours. Two values each: a darker one for light backgrounds, a lighter one for dark backgrounds,
+  so text stays readable in both themes. Everything that shows a status uses these tokens
+  (bg-healthy/10, text-down, ring-degraded/25 ...), never a hard-coded colour.
+*/
+:root {
+  --healthy: #15803d;
+  --degraded: #b45309;
+  --down: #b91c1c;
+  --paused: #475569;
+  --pending: #0369a1;
+}
+.dark {
+  --healthy: #4ade80;
+  --degraded: #fbbf24;
+  --down: #f87171;
+  --paused: #94a3b8;
+  --pending: #38bdf8;
+}
+
+/* `inline` makes the generated utilities read the variables above at runtime, so they switch with the theme */
+@theme inline {
+  --color-healthy: var(--healthy);
+  --color-degraded: var(--degraded);
+  --color-down: var(--down);
+  --color-paused: var(--paused);
+  --color-pending: var(--pending);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  }
+}
