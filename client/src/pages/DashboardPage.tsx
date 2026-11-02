@@ -1,108 +1,68 @@
 import { Activity } from "lucide-react";
-import type { ReactNode } from "react";
-import { Card } from "../components/Card";
-import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { Skeleton } from "../components/Skeleton";
-import { useAuth } from "../hooks/useAuth";
+import { Card } from "../components/ui/Card";
+import { Skeleton } from "../components/ui/Skeleton";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
-import { formatNumber, formatPercent } from "../utils/format";
-import { cn } from "../utils/ui";
 
-function StatCard({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: ReactNode;
-  detail?: string;
-  tone?: "down";
-}) {
+function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <Card>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-      <p className={cn("mt-1 text-3xl font-semibold tabular-nums", tone === "down" && "text-down")}>
-        {value}
-      </p>
-      {detail && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p>}
+      <p className="text-sm text-fg-muted">{label}</p>
+      <p className="mt-1 text-3xl font-semibold tracking-tight">{value}</p>
     </Card>
   );
 }
 
+/** Phase 5 placeholder: four real numbers prove the data layer. Phase 6 replaces this page. */
 export function DashboardPage() {
   useDocumentTitle("Dashboard");
-  const { user } = useAuth();
-  const summary = useDashboardSummary();
-  const firstName = user?.name.trim().split(/\s+/)[0];
-
-  let content: ReactNode;
-  if (summary.isPending) {
-    content = (
-      <div
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        aria-busy="true"
-        aria-label="Loading summary"
-      >
-        {Array.from({ length: 4 }, (_, index) => (
-          <Card key={index}>
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="mt-3 h-8 w-16" />
-            <Skeleton className="mt-3 h-3 w-32" />
-          </Card>
-        ))}
-      </div>
-    );
-  } else if (summary.isError) {
-    content = (
-      <ErrorState
-        title="Couldn't load your summary"
-        error={summary.error}
-        onRetry={() => void summary.refetch()}
-      />
-    );
-  } else if (summary.data.monitors.total === 0) {
-    content = (
-      <EmptyState
-        icon={Activity}
-        title="No monitors yet"
-        description="Once you add an API endpoint, its status, response time and incidents show up here. Creating monitors arrives in Phase 6."
-      />
-    );
-  } else {
-    const { monitors, uptime24h, checks24h, activeIncidentCount } = summary.data;
-    content = (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Monitors"
-          value={formatNumber(monitors.total)}
-          detail={`${monitors.healthy} healthy · ${monitors.degraded} degraded · ${monitors.down} down · ${monitors.paused} paused`}
-        />
-        <StatCard
-          label="Uptime (24 h)"
-          value={formatPercent(uptime24h)}
-          detail={uptime24h === null ? "Waiting for the first scheduled check" : undefined}
-        />
-        <StatCard label="Checks (24 h)" value={formatNumber(checks24h)} />
-        <StatCard
-          label="Open incidents"
-          value={formatNumber(activeIncidentCount)}
-          tone={activeIncidentCount > 0 ? "down" : undefined}
-        />
-      </div>
-    );
-  }
+  const { data, isPending, isError, error, refetch, isFetching } = useDashboardSummary();
 
   return (
     <>
-      <PageHeader
-        title={firstName ? `Welcome back, ${firstName}` : "Dashboard"}
-        description="Your APIs at a glance."
-      />
-      {content}
+      <PageHeader title="Dashboard" description="The full dashboard arrives in Phase 6." />
+
+      {isPending && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i}>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-3 h-8 w-16" />
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <ErrorState
+          title="Could not load the dashboard"
+          error={error}
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
+
+      {data &&
+        (data.monitors.total === 0 ? (
+          <EmptyState
+            icon={Activity}
+            title="No monitors yet"
+            description="Creating monitors is the first thing Phase 6 adds. Your account is working."
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat label="Monitors" value={data.monitors.total} />
+            <Stat label="Down" value={data.monitors.down} />
+            <Stat label="Active incidents" value={data.activeIncidentCount} />
+            <Stat
+              label="Uptime (24 h)"
+              value={data.uptime24h === null ? "—" : `${data.uptime24h}%`}
+            />
+          </div>
+        ))}
     </>
   );
 }

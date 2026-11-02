@@ -1,25 +1,28 @@
-// Hand-written API types. They must match what the server serializers return (progress summary, section 4).
-// When a server serializer changes, change the matching type here.
+// Hand-written mirror of the server's response shapes (progress summary, section 4).
+// When a serializer changes on the server, change it here too: this file is the only copy.
 
 export type Plan = "FREE" | "PRO" | "TEAM";
 
-export interface User {
+export type User = {
   id: string;
-  name: string;
   email: string;
+  name: string;
   plan: Plan;
-  createdAt?: string;
-}
+  createdAt: string;
+};
 
-/** PENDING | HEALTHY | DEGRADED | DOWN. "Paused" is NOT a status: it is the `isPaused` flag. */
+/** "Paused" is NOT a status: it is the `isPaused` flag. Use getDisplayStatus() to get all five UI states. */
 export type MonitorStatus = "PENDING" | "HEALTHY" | "DEGRADED" | "DOWN";
 
-export interface Monitor {
+export type FailureType =
+  "TIMEOUT" | "DNS" | "CONNECTION" | "TLS" | "UNEXPECTED_STATUS" | "BLOCKED_TARGET" | "OTHER";
+
+export type Monitor = {
   id: string;
   name: string;
   description: string | null;
   url: string;
-  method: string; // GET, POST, ...: the exact list is in server/src/schemas/monitor.ts
+  method: string;
   expectedStatus: number;
   followRedirects: boolean;
   intervalSec: number;
@@ -29,7 +32,8 @@ export interface Monitor {
   slowThreshold: number;
   status: MonitorStatus;
   isPaused: boolean;
-  failStreak: number; // lets the UI say "1 failed check" while the status is still HEALTHY
+  /** Consecutive failed checks so far: lets the UI say "1 failed check" while the status is still HEALTHY. */
+  failStreak: number;
   lastCheckedAt: string | null;
   lastStatusCode: number | null;
   lastResponseTimeMs: number | null;
@@ -39,42 +43,35 @@ export interface Monitor {
   hasBody: boolean;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-/** Header as returned by the single-monitor endpoints. Sensitive values are never returned (value is null). */
-export interface MonitorHeader {
-  name: string;
-  value: string | null;
-  sensitive: boolean;
-}
+/** Sensitive header values are never returned: value is null and sensitive is true. */
+export type MonitorHeader = { name: string; value: string | null; sensitive: boolean };
 
-/** GET/PATCH/POST of ONE monitor adds headers and body */
-export interface MonitorDetail extends Monitor {
-  headers: MonitorHeader[];
-  body: string | null;
-}
+/** Returned by the single-monitor endpoints (adds headers and body). */
+export type MonitorDetail = Monitor & { headers: MonitorHeader[]; body: string | null };
 
 export type CheckTrigger = "SCHEDULED" | "MANUAL";
 export type CheckOutcome = "SUCCESS" | "SLOW" | "FAILURE";
-export type FailureType =
-  "TIMEOUT" | "DNS" | "CONNECTION" | "TLS" | "UNEXPECTED_STATUS" | "BLOCKED_TARGET" | "OTHER";
 
-export interface Check {
-  id: string; // BigInt on the server, so a string here
+export type Check = {
+  /** BigInt on the server, so a string here. */
+  id: string;
   trigger: CheckTrigger;
   outcome: CheckOutcome;
   failureType: FailureType | null;
   statusCode: number | null;
   responseTimeMs: number | null;
-  errorMessage: string | null; // human text, never a raw error code
+  /** Human text, never a raw error code. */
+  errorMessage: string | null;
   checkedAt: string;
-}
+};
 
 export type IncidentType = "DOWN" | "DEGRADED";
 export type IncidentStatus = "OPEN" | "RESOLVED";
 export type IncidentResolution = "RECOVERED" | "PAUSED" | "CONFIG_CHANGED";
 
-export interface Incident {
+export type Incident = {
   id: string;
   monitorId: string;
   monitorName: string;
@@ -87,30 +84,28 @@ export interface Incident {
   startedAt: string;
   resolvedAt: string | null;
   resolution: IncidentResolution | null;
-  durationSec: number; // live value while the incident is open
-}
+  /** Live value while the incident is open. */
+  durationSec: number;
+};
 
-export interface DashboardSummary {
+export type DashboardSummary = {
   monitors: {
     total: number;
     healthy: number;
     degraded: number;
     down: number;
     pending: number;
-    paused: number; // a paused monitor is counted only here
+    paused: number;
   };
-  uptime24h: number | null; // percent, or null when there are no scheduled checks yet
+  /** Percent with 2 decimals, or null when there were no scheduled checks in the last 24 h. */
+  uptime24h: number | null;
   checks24h: number;
   activeIncidentCount: number;
-  activeIncidents: Incident[]; // at most 10
-}
+  activeIncidents: Incident[];
+};
 
-export interface Paginated<T> {
-  items: T[];
-  nextCursor: string | null;
-}
+/** Every list endpoint answers { items, nextCursor }. */
+export type Paginated<T> = { items: T[]; nextCursor: string | null };
 
-/** The standard error body of the API (API-1) */
-export interface ApiErrorBody {
-  error: { code: string; message: string; details?: unknown };
-}
+/** The standard error body (API-1). */
+export type ApiErrorBody = { error: { code: string; message: string; details?: unknown } };

@@ -1,59 +1,58 @@
-import type { Monitor } from "../types/api";
+import type { Monitor, MonitorStatus } from "../types/api";
 
-/** The five states a person sees. "paused" wins over the stored status: it is a flag, not a status. */
+/** The five states the UI shows (UX-1). The server has four statuses plus the isPaused flag. */
 export type DisplayStatus = "healthy" | "degraded" | "down" | "paused" | "pending";
 
-export interface StatusMeta {
-  label: string;
-  description: string;
-  /** Tailwind classes for the badge (colour tokens come from index.css) */
-  badge: string;
-  dot: string;
-}
+export const DISPLAY_STATUSES: DisplayStatus[] = [
+  "healthy",
+  "degraded",
+  "down",
+  "paused",
+  "pending",
+];
 
-export const STATUS_META: Record<DisplayStatus, StatusMeta> = {
+export const STATUS_LABEL: Record<DisplayStatus, string> = {
+  healthy: "Healthy",
+  degraded: "Degraded",
+  down: "Down",
+  paused: "Paused",
+  pending: "Pending",
+};
+
+export const STATUS_HINT: Record<DisplayStatus, string> = {
+  healthy: "Responding normally",
+  degraded: "Responding, but slower than the threshold",
+  down: "Not responding or returning errors",
+  paused: "Checks are paused",
+  pending: "Waiting for first check",
+};
+
+/** Label and description displayed for each monitor status. */
+export const STATUS_META: Record<DisplayStatus, { label: string; description: string }> = {
   healthy: {
-    label: "Healthy",
-    description: "Responding normally",
-    badge: "bg-healthy/10 text-healthy ring-healthy/25",
-    dot: "bg-healthy",
+    label: STATUS_LABEL.healthy,
+    description: STATUS_HINT.healthy,
   },
   degraded: {
-    label: "Degraded",
-    description: "Responding, but slower than the threshold",
-    badge: "bg-degraded/10 text-degraded ring-degraded/25",
-    dot: "bg-degraded",
+    label: STATUS_LABEL.degraded,
+    description: STATUS_HINT.degraded,
   },
   down: {
-    label: "Down",
-    description: "Not responding correctly",
-    badge: "bg-down/10 text-down ring-down/25",
-    dot: "bg-down",
+    label: STATUS_LABEL.down,
+    description: STATUS_HINT.down,
   },
   paused: {
-    label: "Paused",
-    description: "Checks are paused",
-    badge: "bg-paused/10 text-paused ring-paused/25",
-    dot: "bg-paused",
+    label: STATUS_LABEL.paused,
+    description: STATUS_HINT.paused,
   },
   pending: {
-    label: "Pending",
-    description: "Waiting for first check",
-    badge: "bg-pending/10 text-pending ring-pending/25",
-    dot: "bg-pending",
+    label: STATUS_LABEL.pending,
+    description: STATUS_HINT.pending,
   },
 };
 
+/** Paused wins over everything: a paused monitor keeps its last status on the server but must show as paused. */
 export function getDisplayStatus(monitor: Pick<Monitor, "status" | "isPaused">): DisplayStatus {
   if (monitor.isPaused) return "paused";
-  switch (monitor.status) {
-    case "HEALTHY":
-      return "healthy";
-    case "DEGRADED":
-      return "degraded";
-    case "DOWN":
-      return "down";
-    case "PENDING":
-      return "pending";
-  }
+  return monitor.status.toLowerCase() as Lowercase<MonitorStatus>;
 }

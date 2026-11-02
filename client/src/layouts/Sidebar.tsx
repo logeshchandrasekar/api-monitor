@@ -1,23 +1,27 @@
+import { Activity, LayoutDashboard, Settings, TriangleAlert, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router";
-import { useAuth } from "../hooks/useAuth";
-import type { Plan } from "../types/api";
-import { cn, focusRing } from "../utils/ui";
-import { BrandIcon, navItems } from "./navItems";
+import { Brand } from "../components/Brand";
+import { cn } from "../utils/cn";
 
-const PLAN_LABEL: Record<Plan, string> = { FREE: "Free", PRO: "Pro", TEAM: "Team" };
+type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean };
 
-/** The navigation column. `onNavigate` closes the mobile drawer when a link is clicked. */
+// UX-1: only sections that exist are listed. Add Analytics when Phase 7 ships; a Status Page is not in the MVP.
+const NAV: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/monitors", label: "Monitors", icon: Activity },
+  { to: "/incidents", label: "Incidents", icon: TriangleAlert },
+  { to: "/settings", label: "Settings", icon: Settings },
+];
+
+/** The navigation list. Used in the fixed desktop sidebar and inside the mobile drawer (which passes onNavigate to close itself). */
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { user } = useAuth();
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 px-4 dark:border-slate-800">
-        <BrandIcon className="size-6 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        <span className="text-base font-semibold">API Monitor</span>
+      <div className="flex h-14 items-center border-b border-line px-5">
+        <Brand />
       </div>
-
       <nav aria-label="Main" className="flex-1 space-y-1 p-3">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {NAV.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -26,10 +30,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
-                focusRing,
+                isActive ? "bg-subtle text-fg" : "text-fg-muted hover:bg-subtle hover:text-fg",
               )
             }
           >
@@ -38,12 +39,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </NavLink>
         ))}
       </nav>
-
-      {user && (
-        <div className="border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-          {PLAN_LABEL[user.plan]} plan
-        </div>
-      )}
     </div>
   );
 }

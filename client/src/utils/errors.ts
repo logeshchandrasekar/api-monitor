@@ -1,52 +1,64 @@
 import { ApiError } from "../services/api";
 
-/** A readable message for any thrown value. Safe to show in a toast or an alert. */
-export function getErrorMessage(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.status === 0) return err.message; // network error: api.ts already wrote a friendly sentence
-    if (err.status === 429) return "Too many attempts. Please wait a few minutes and try again.";
-    if (err.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
-    return err.message; // our own 4xx messages are written for people
-  }
-  return "Something went wrong. Please try again.";
-}
-
+/** Field-level validation errors used by forms. */
 export type FieldErrors = Record<string, string>;
 
-/**
- * Pulls per-field messages out of a 400 validation error, whatever shape `details` has:
- *   [{ path: ["email"], message: "..." }]        (list of issues)
- *   { fieldErrors: { email: ["..."] } }           (flattened)
- *   { email: "..." } or { email: ["..."] }        (plain map)
- * Returns {} for anything else, so the caller falls back to a form-level message.
- */
-export function fieldErrorsFrom(err: unknown): FieldErrors {
-  if (!(err instanceof ApiError) || err.status !== 400) return {};
-  const out: FieldErrors = {};
-  const add = (field: string, message: unknown) => {
-    if (field && typeof message === "string" && !(field in out)) out[field] = message;
-  };
+/** A message that is always safe to show a person. */
+export function getErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+): string {
+  return error instanceof ApiError ? error.message : fallback;
+}
 
-  const details = err.details;
+/**
+ * Pulls per-field messages out of an API error's details, so a form can put them under the right input.
+ * Understands: [{ path, message }], { field: "msg" | ["msg"] } and { fieldErrors: { ... } }.
+ * Anything else returns {} and the form falls back to showing the general message in a banner.
+ * (Run the invalid-register curl in 5.3 to see which shape your server sends.)
+ */
+export function fieldErrorsFrom(error: unknown): FieldErrors {
+  if (!(error instanceof ApiError) || !error.details || typeof error.details !== "object") {
+    return {};
+  }
+
+  const out: FieldErrors = {};
+  const details = error.details;
+
   if (Array.isArray(details)) {
-    for (const issue of details) {
-      if (!issue || typeof issue !== "object") continue;
-      const { path, message } = issue as { path?: unknown; message?: unknown };
+    for (const item of details) {
+      if (!item || typeof item !== "object") continue;
+
+      const { path, message } = item as {
+        path?: unknown;
+        message?: unknown;
+      };
+
       const field = Array.isArray(path)
         ? String(path[0] ?? "")
         : typeof path === "string"
           ? path
           : "";
-      add(field, message);
+
+      if (field && typeof message === "string" && !(field in out)) {
+        out[field] = message;
+      }
     }
-  } else if (details && typeof details === "object") {
-    const source =
-      "fieldErrors" in details && details.fieldErrors && typeof details.fieldErrors === "object"
-        ? details.fieldErrors
-        : details;
+
+    return out;
+  }
+
+  const source = (details as { fieldErrors?: unknown }).fieldErrors ?? details;
+
+  if (source && typeof source === "object") {
     for (const [field, value] of Object.entries(source as Record<string, unknown>)) {
-      add(field, Array.isArray(value) ? value[0] : value);
+      const message = Array.isArray(value) ? value[0] : value;
+
+      if (typeof message === "string" && !(field in out)) {
+        out[field] = message;
+      }
     }
   }
+
   return out;
 }

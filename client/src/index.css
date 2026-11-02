@@ -1,45 +1,116 @@
 @import "tailwindcss";
 
-/* Dark mode is driven by a `dark` class on <html> (set by ThemeProvider and by the script in index.html) */
+/* Class-based dark mode: <html class="dark">. Set by the inline script in index.html and by ThemeProvider. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/*
-  Status colours. Two values each: a darker one for light backgrounds, a lighter one for dark backgrounds,
-  so text stays readable in both themes. Everything that shows a status uses these tokens
-  (bg-healthy/10, text-down, ring-degraded/25 ...), never a hard-coded colour.
-*/
 :root {
-  --healthy: #15803d;
-  --degraded: #b45309;
-  --down: #b91c1c;
-  --paused: #475569;
-  --pending: #0369a1;
-}
-.dark {
-  --healthy: #4ade80;
-  --degraded: #fbbf24;
-  --down: #f87171;
-  --paused: #94a3b8;
-  --pending: #38bdf8;
+  --canvas: #f8fafc; /* page background */
+  --surface: #ffffff; /* cards, sidebar, dialogs */
+  --subtle: #f1f5f9; /* hover fills, skeletons, table stripes */
+  --line: #e2e8f0; /* borders */
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --brand: #4f46e5;
+  --brand-hover: #4338ca;
+  --brand-fg: #ffffff;
+  --focus: #6366f1;
+
+  /* Status colours: solid dot, soft badge background, readable ink (UX-1: five states) */
+  --healthy: #16a34a;
+  --healthy-soft: #dcfce7;
+  --healthy-ink: #166534;
+  --degraded: #d97706;
+  --degraded-soft: #fef3c7;
+  --degraded-ink: #92400e;
+  --down: #dc2626;
+  --down-soft: #fee2e2;
+  --down-ink: #991b1b;
+  --paused: #64748b;
+  --paused-soft: #e2e8f0;
+  --paused-ink: #334155;
+  --pending: #0284c7;
+  --pending-soft: #e0f2fe;
+  --pending-ink: #075985;
 }
 
-/* `inline` makes the generated utilities read the variables above at runtime, so they switch with the theme */
+.dark {
+  --canvas: #0b1120;
+  --surface: #111a2e;
+  --subtle: #18233a;
+  --line: #243049;
+  --fg: #e5e7eb;
+  --fg-muted: #94a3b8;
+  --brand: #6366f1;
+  --brand-hover: #818cf8;
+  --brand-fg: #ffffff;
+  --focus: #818cf8;
+
+  --healthy: #4ade80;
+  --healthy-soft: #4ade8026;
+  --healthy-ink: #86efac;
+  --degraded: #fbbf24;
+  --degraded-soft: #fbbf2426;
+  --degraded-ink: #fcd34d;
+  --down: #f87171;
+  --down-soft: #f8717126;
+  --down-ink: #fca5a5;
+  --paused: #94a3b8;
+  --paused-soft: #94a3b826;
+  --paused-ink: #cbd5e1;
+  --pending: #38bdf8;
+  --pending-soft: #38bdf826;
+  --pending-ink: #7dd3fc;
+}
+
+/* Expose the tokens as Tailwind colours: bg-surface, text-fg-muted, border-line, bg-healthy-soft, ... */
 @theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+
   --color-healthy: var(--healthy);
+  --color-healthy-soft: var(--healthy-soft);
+  --color-healthy-ink: var(--healthy-ink);
   --color-degraded: var(--degraded);
+  --color-degraded-soft: var(--degraded-soft);
+  --color-degraded-ink: var(--degraded-ink);
   --color-down: var(--down);
+  --color-down-soft: var(--down-soft);
+  --color-down-ink: var(--down-ink);
   --color-paused: var(--paused);
+  --color-paused-soft: var(--paused-soft);
+  --color-paused-ink: var(--paused-ink);
   --color-pending: var(--pending);
+  --color-pending-soft: var(--pending-soft);
+  --color-pending-ink: var(--pending-ink);
 }
 
 @layer base {
   html {
-    color-scheme: light;
+    color-scheme: light; /* native scrollbars, form controls and dialogs follow the theme */
   }
   html.dark {
     color-scheme: dark;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    background-color: var(--canvas);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Tailwind v4 borders default to currentColor; make a bare `border` use the theme line colour */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--line);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 }

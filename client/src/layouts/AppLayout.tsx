@@ -1,69 +1,40 @@
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router";
-import { cn, focusRing } from "../utils/ui";
+import { Drawer } from "./Drawer";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
 export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // While the mobile drawer is open: Escape closes it and the page behind it does not scroll
+  // If the window grows past the desktop breakpoint while the drawer is open, close it (the desktop sidebar takes over)
   useEffect(() => {
-    if (!drawerOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDrawerOpen(false);
+    const query = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (query.matches) setDrawerOpen(false);
     };
-    document.addEventListener("keydown", onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [drawerOpen]);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh bg-canvas text-fg">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:shadow dark:focus:bg-slate-900"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2"
       >
         Skip to content
       </a>
 
-      {/* Desktop: fixed sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-slate-200 bg-white lg:block dark:border-slate-800 dark:bg-slate-950">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line bg-surface lg:block">
         <Sidebar />
       </aside>
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <Sidebar onNavigate={() => setDrawerOpen(false)} />
+      </Drawer>
 
-      {/* Mobile and tablet: drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-slate-900/50"
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden="true"
-          />
-          <aside className="absolute inset-y-0 left-0 w-64 border-r border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Close navigation menu"
-              className={cn(
-                "absolute right-2 top-2.5 inline-flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800",
-                focusRing,
-              )}
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
-          </aside>
-        </div>
-      )}
-
-      <div className="lg:pl-60">
-        <TopBar onMenuClick={() => setDrawerOpen(true)} />
+      <div className="lg:pl-64">
+        <TopBar onOpenMenu={() => setDrawerOpen(true)} />
         <main id="main" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>

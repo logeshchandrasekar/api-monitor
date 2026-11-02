@@ -1,93 +1,88 @@
+import { API_BASE } from "../config";
 import type { ApiErrorBody } from "../types/api";
 
-// Same-origin: the Vite dev server proxies /api to the Express server, and in production
-// Vercel rewrites /api to the backend (Phase 10). That keeps the session cookie first-party.
-const BASE_URL = "/api";
-
+/** Every failed request becomes one of these: status 0 means the network call itself failed. */
 export class ApiError extends Error {
-  status: number; // 0 means "no HTTP response at all" (network down, CORS, DNS)
-  code: string;
-  details: unknown;
-  requestId: string | null;
+  readonly status: number;
+  readonly code: string;
+  readonly details: unknown;
 
-  constructor(
-    status: number,
-    code: string,
-    message: string,
-    details?: unknown,
-    requestId: string | null = null,
-  ) {
+  constructor(status: number, code: string, message: string, details?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.details = details;
-    this.requestId = requestId;
   }
 }
 
-type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-
-export interface RequestOptions {
+export type RequestOptions = {
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  body?: unknown;
+  /** Query string values; undefined, null and "" are left out. */
+  query?: Record<string, string | number | boolean | null | undefined>;
   signal?: AbortSignal;
-  /**
-   * Set for calls where a 401 is an expected answer: login, register, /auth/me, logout.
-   * Everywhere else a 401 means "your session is gone" and triggers the global handler.
-   */
+  /** Skip the global "session expired" handler on a 401: used by login, register, logout and the first /auth/me. */
   skipUnauthorizedHandler?: boolean;
-}
+};
+
+type MethodOptions = Omit<RequestOptions, "method" | "body">;
 
 let unauthorizedHandler: (() => void) | null = null;
 
-/** The auth layer registers what should happen on a 401 (clear the cached user). Pass null to remove it. */
-export function setUnauthorizedHandler(handler: (() => void) | null): void {
+/** AuthProvider registers what should happen when a request comes back 401 mid-session. */
+export function setUnauthorizedHandler(handler: (() => void) | null) {
   unauthorizedHandler = handler;
 }
 
-function isApiErrorBody(value: unknown): value is ApiErrorBody {
-  if (!value || typeof value !== "object" || !("error" in value)) return false;
-  const error = (value as { error: unknown }).error;
-  return (
-    !!error &&
-    typeof error === "object" &&
-    typeof (error as { code?: unknown }).code === "string" &&
-    typeof (error as { message?: unknown }).message === "string"
-  );
+/** Add query parameters to a path, excluding undefined, null and empty values. */
+export function withQuery(path: string, query?: RequestOptions["query"]): string {
+  if (!query) return path;
+
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  }
+
+  const qs = params.toString();
+  if (!qs) return path;
+
+  return `${path}${path.includes("?") ? "&" : "?"}${qs}`;
 }
 
-/** "/monitors" + { limit: 20, status: undefined } -> "/monitors?limit=20" (skips undefined, null and "") */
-export function withQuery(
-  path: string,
-  params: Record<string, string | number | boolean | null | undefined>,
-): string {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === "") continue;
-    search.set(key, String(value));
-  }
-  const query = search.toString();
-  return query ? `${path}?${query}` : path;
+function buildUrl(path: string, query?: RequestOptions["query"]): string {
+  return `${API_BASE}${withQuery(path, query)}`;
 }
 
-async function request<T>(
-  method: Method,
-  path: string,
-  body: unknown,
-  options: RequestOptions = {},
-): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
-  const init: RequestInit = { method, credentials: "include", headers, signal: options.signal };
+function fallbackMessage(status: number): string {
+  if (status === 429) return "Too many requests. Please wait a moment and try again.";
+  if (status === 404) return "Not found.";
+  if (status >= 500) return "The server had a problem. Please try again in a moment.";
+  return "The request could not be completed.";
+}
 
-  if (method === "POST" || method === "PUT" || method === "PATCH") {
-    headers["Content-Type"] = "application/json";
-    init.body = JSON.stringify(body ?? {}); // always JSON, never an empty body (see 415 above)
-  }
+async function request<T = void>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = "GET", body, query, signal, skipUnauthorizedHandler = false } = options;
 
   let response: Response;
+
   try {
-    response = await fetch(`${BASE_URL}${path}`, init);
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") throw err; // a cancelled request is not an error to show
+    response = await fetch(buildUrl(path, query), {
+      method,
+      credentials: "include",
+      signal,
+      // JSON content type on every write, even without a body.
+      headers: method === "GET" ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
     throw new ApiError(
       0,
       "NETWORK_ERROR",
@@ -95,50 +90,60 @@ async function request<T>(
     );
   }
 
-  const requestId = response.headers.get("x-request-id");
   const text = await response.text();
-  let data: unknown;
+  let data: unknown = null;
+
   if (text) {
     try {
       data = JSON.parse(text);
     } catch {
-      data = undefined; // not JSON (for example an HTML error page from a proxy)
+      data = null;
     }
   }
 
-  if (response.ok) return data as T; // 204 or an empty body gives undefined
+  if (!response.ok) {
+    const serverError = (data as Partial<ApiErrorBody> | null)?.error;
 
-  if (response.status === 401 && !options.skipUnauthorizedHandler) unauthorizedHandler?.();
-
-  if (isApiErrorBody(data)) {
-    throw new ApiError(
+    const error = new ApiError(
       response.status,
-      data.error.code,
-      data.error.message,
-      data.error.details,
-      requestId,
+      serverError?.code ?? "HTTP_ERROR",
+      serverError?.message ?? fallbackMessage(response.status),
+      serverError?.details,
     );
+
+    if (response.status === 401 && !skipUnauthorizedHandler) {
+      unauthorizedHandler?.();
+    }
+
+    throw error;
   }
-  throw new ApiError(
-    response.status,
-    "BAD_RESPONSE",
-    response.status >= 500
-      ? "The server had a problem. Please try again in a moment."
-      : `Unexpected response from the server (${response.status}).`,
-    undefined,
-    requestId,
-  );
+
+  return data as T;
 }
 
-export const api = {
-  get: <T = unknown>(path: string, options?: RequestOptions) =>
-    request<T>("GET", path, undefined, options),
-  post: <T = unknown>(path: string, body?: unknown, options?: RequestOptions) =>
-    request<T>("POST", path, body, options),
-  put: <T = unknown>(path: string, body?: unknown, options?: RequestOptions) =>
-    request<T>("PUT", path, body, options),
-  patch: <T = unknown>(path: string, body?: unknown, options?: RequestOptions) =>
-    request<T>("PATCH", path, body, options),
-  delete: <T = unknown>(path: string, options?: RequestOptions) =>
-    request<T>("DELETE", path, undefined, options),
-};
+/** HTTP methods used by the frontend. */
+
+/** HTTP methods used by the frontend. Supports both api() and api.get(). */
+export const api = Object.assign(request, {
+  request,
+
+  get<T = void>(path: string, options: MethodOptions = {}): Promise<T> {
+    return request<T>(path, { ...options, method: "GET" });
+  },
+
+  post<T = void>(path: string, body?: unknown, options: MethodOptions = {}): Promise<T> {
+    return request<T>(path, { ...options, method: "POST", body });
+  },
+
+  patch<T = void>(path: string, body?: unknown, options: MethodOptions = {}): Promise<T> {
+    return request<T>(path, { ...options, method: "PATCH", body });
+  },
+
+  put<T = void>(path: string, body?: unknown, options: MethodOptions = {}): Promise<T> {
+    return request<T>(path, { ...options, method: "PUT", body });
+  },
+
+  delete<T = void>(path: string, options: MethodOptions = {}): Promise<T> {
+    return request<T>(path, { ...options, method: "DELETE" });
+  },
+});

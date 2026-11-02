@@ -1,9 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-interface State {
-  error: Error | null;
-}
+type State = { error: Error | null };
 
+/**
+ * Catches errors thrown while RENDERING (a bug in a component). It does not catch errors in event handlers
+ * or in async code: those are handled where they happen (query errors, mutation errors, toasts).
+ * The fallback uses only plain Tailwind classes, so it still works if a provider is what crashed.
+ */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = { error: null };
 
@@ -11,38 +14,32 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     return { error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo): void {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled UI error", error, info.componentStack);
   }
 
   render() {
-    if (!this.state.error) return this.props.children;
+    const { error } = this.state;
+    if (!error) return this.props.children;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-2xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
-          The page hit an unexpected problem. Reloading usually fixes it. Your monitors keep running
-          either way.
-        </p>
-        {import.meta.env.DEV && (
-          <pre className="mt-4 max-w-xl overflow-auto rounded-lg bg-slate-100 p-3 text-left text-xs text-red-700 dark:bg-slate-900 dark:text-red-300">
-            {this.state.error.message}
-          </pre>
-        )}
-        <div className="mt-6 flex gap-3">
+      <div className="grid min-h-dvh place-items-center bg-canvas p-6 text-fg">
+        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center shadow-sm">
+          <h1 className="text-xl font-semibold">Something broke</h1>
+          <p className="mt-2 text-sm text-fg-muted">
+            An unexpected error stopped this page from loading. Reloading usually fixes it.
+          </p>
+          {import.meta.env.DEV && (
+            <pre className="mt-4 overflow-auto rounded-lg bg-subtle p-3 text-left text-xs">
+              {error.message}
+            </pre>
+          )}
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            className="mt-6 h-10 rounded-lg bg-brand px-4 text-sm font-medium text-brand-fg hover:bg-brand-hover"
           >
-            Reload page
+            Reload the page
           </button>
-          <a
-            href="/"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-          >
-            Go to dashboard
-          </a>
         </div>
       </div>
     );

@@ -7,22 +7,25 @@
     <title>API Monitor</title>
     <meta name="color-scheme" content="light dark" />
     <style>
+      /* Paints the right page colour before the CSS bundle arrives (matters in dev, where CSS loads via JS) */
       html {
         background: #f8fafc;
+        color-scheme: light;
       }
       html.dark {
-        background: #020617;
+        background: #0b1120;
+        color-scheme: dark;
       }
     </style>
     <script>
-      // Runs before first paint: apply the saved theme (or the system preference) so there is no flash.
+      // Runs before React: applies the saved theme (or the OS one) to <html>, so there is no wrong-theme flash.
+      // "am-theme" must match THEME_STORAGE_KEY in src/config.ts. No value means "System".
       (function () {
         try {
           var saved = localStorage.getItem("am-theme");
           var dark =
             saved === "dark" ||
-            ((saved === null || saved === "system") &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches);
+            (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
           document.documentElement.classList.toggle("dark", dark);
         } catch (e) {}
       })();

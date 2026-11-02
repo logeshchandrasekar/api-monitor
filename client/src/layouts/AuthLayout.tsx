@@ -1,21 +1,22 @@
 import { Outlet } from "react-router";
+import { Brand } from "../components/Brand";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { BrandIcon } from "./navItems";
 
-/** Centered card layout for /login and /register */
+/** Centered card for login and register. */
 export function AuthLayout() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10">
-      <div className="absolute right-4 top-4">
+    <div className="flex min-h-dvh flex-col bg-canvas text-fg">
+      <div className="flex justify-end p-4">
         <ThemeToggle />
       </div>
-      <div className="mb-8 flex items-center gap-2 text-xl font-semibold">
-        <BrandIcon className="size-7 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        API Monitor
+      <div className="flex flex-1 flex-col items-center justify-center px-4 pb-16">
+        <div className="mb-6 text-xl">
+          <Brand />
+        </div>
+        <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+          <Outlet />
+        </div>
       </div>
-      <main className="w-full max-w-sm">
-        <Outlet />
-      </main>
     </div>
   );
 }

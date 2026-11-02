@@ -1,132 +1,110 @@
+import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
-import { toast } from "sonner";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
-import { FormAlert } from "../components/FormAlert";
-import { Input } from "../components/Input";
+import { Link, useLocation } from "react-router";
+import { Alert } from "../components/ui/Alert";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import { useAuth } from "../hooks/useAuth";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { ApiError } from "../services/api";
-import { fieldErrorsFrom, getErrorMessage, type FieldErrors } from "../utils/errors";
+import { fieldErrorsFrom, getErrorMessage } from "../utils/errors";
 import {
-  MIN_PASSWORD_LENGTH,
-  validateConfirmation,
+  PASSWORD_MIN_LENGTH,
   validateEmail,
   validateName,
   validateNewPassword,
 } from "../utils/validation";
 
-const FIELDS = ["name", "email", "password", "confirm"] as const;
+type Fields = { name?: string; email?: string; password?: string };
 
 export function RegisterPage() {
   useDocumentTitle("Create account");
   const { register } = useAuth();
+  const location = useLocation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [clientErrors, setClientErrors] = useState<Fields>({});
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  const mutation = useMutation({ mutationFn: register });
+
+  // Server messages go under the matching field when the server says which field; otherwise in a banner
+  const error = mutation.error;
+  const serverFields: Fields = error ? fieldErrorsFrom(error) : {};
+  if (error instanceof ApiError && error.status === 409 && !serverFields.email)
+    serverFields.email = "An account with this email already exists.";
+  const hasFieldError = Boolean(serverFields.name || serverFields.email || serverFields.password);
+  const banner =
+    error && !hasFieldError
+      ? error instanceof ApiError && error.status === 429
+        ? "Too many attempts. Wait a few minutes and try again."
+        : getErrorMessage(error, "Could not create your account. Please try again.")
+      : null;
+
+  function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setFormError(null);
-
-    const local: FieldErrors = {};
-    const checks: Record<(typeof FIELDS)[number], string | null> = {
-      name: validateName(name),
-      email: validateEmail(email),
-      password: validateNewPassword(password),
-      confirm: validateConfirmation(password, confirm),
+    const next: Fields = {
+      name: validateName(name) ?? undefined,
+      email: validateEmail(email) ?? undefined,
+      password: validateNewPassword(password) ?? undefined,
     };
-    for (const field of FIELDS) {
-      const message = checks[field];
-      if (message) local[field] = message;
-    }
-    setErrors(local);
-    if (Object.keys(local).length > 0) return;
-
-    setSubmitting(true);
-    try {
-      await register({ name: name.trim(), email: email.trim(), password });
-      toast.success("Account created. Welcome!");
-      // PublicOnlyRoute now sees a logged-in user and moves you to the app
-    } catch (err) {
-      setSubmitting(false);
-      const fromServer = fieldErrorsFrom(err);
-      const shown: FieldErrors = {};
-      for (const field of FIELDS) {
-        const message = fromServer[field];
-        if (message) shown[field] = message;
-      }
-      if (Object.keys(shown).length > 0) {
-        setErrors(shown); // the server pointed at specific fields
-      } else if (err instanceof ApiError && err.status === 409) {
-        setErrors({ email: "An account with this email already exists. Try logging in." });
-      } else {
-        setErrors({});
-        setFormError(getErrorMessage(err));
-      }
-    }
+    setClientErrors(next);
+    if (next.name || next.email || next.password) return;
+    mutation.mutate({ name: name.trim(), email: email.trim(), password });
   }
 
   return (
-    <Card
-      title="Create your account"
-      description="Start monitoring your APIs in a couple of minutes."
-    >
-      <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <FormAlert message={formError} />
+    <>
+      <h1 className="text-xl font-semibold">Create your account</h1>
+      <p className="mt-1 text-sm text-fg-muted">Start monitoring your APIs in a few minutes.</p>
+
+      {banner && (
+        <Alert tone="error" className="mt-4">
+          {banner}
+        </Alert>
+      )}
+
+      <form onSubmit={onSubmit} noValidate className="mt-5 space-y-4">
         <Input
           label="Name"
+          name="name"
           autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          error={errors.name}
+          error={clientErrors.name ?? serverFields.name}
           autoFocus
         />
         <Input
           label="Email"
           type="email"
+          name="email"
           autoComplete="email"
-          inputMode="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          error={errors.email}
+          error={clientErrors.email ?? serverFields.email}
         />
         <Input
           label="Password"
           type="password"
+          name="password"
           autoComplete="new-password"
-          hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          error={errors.password}
+          error={clientErrors.password ?? serverFields.password}
+          hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
         />
-        <Input
-          label="Repeat password"
-          type="password"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          error={errors.confirm}
-        />
-        <Button type="submit" loading={submitting} className="w-full">
+        <Button type="submit" className="w-full" loading={mutation.isPending}>
           Create account
         </Button>
       </form>
-      <p className="mt-5 text-center text-sm text-slate-600 dark:text-slate-400">
+
+      <p className="mt-5 text-center text-sm text-fg-muted">
         Already have an account?{" "}
-        <Link
-          to="/login"
-          className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-        >
-          Log in
+        <Link to="/login" state={location.state} className="font-medium text-brand hover:underline">
+          Sign in
         </Link>
       </p>
-    </Card>
+    </>
   );
 }

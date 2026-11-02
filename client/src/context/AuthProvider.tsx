@@ -1,81 +1,109 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, type ReactNode } from "react";
-import { toast } from "sonner";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ApiError, setUnauthorizedHandler } from "../services/api";
-import { fetchMe, loginRequest, logoutRequest, registerRequest } from "../services/auth";
-import { queryKeys } from "../utils/queryKeys";
-import { AuthContext, type AuthContextValue, type AuthStatus } from "./auth";
+import { authApi, type LoginInput, type RegisterInput } from "../services/authApi";
+import { queryKeys } from "../services/queryKeys";
+import type { User } from "../types/api";
+import {
+  AuthContext,
+  type AuthContextValue,
+  type AuthStatus,
+  type SessionEndReason,
+} from "./authContext";
+
+/**
+ * Everything cached except the "auth" entry belongs to the person who was logged in.
+ * It is dropped whenever the session changes, so the next user never sees the previous user's data.
+ */
+function dropUserData(queryClient: QueryClient) {
+  const isUserData = (query: { queryKey: readonly unknown[] }) => query.queryKey[0] !== "auth";
+  void queryClient.cancelQueries({ predicate: isUserData });
+  queryClient.removeQueries({ predicate: isUserData });
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const [endedReason, setEndedReason] = useState<SessionEndReason | null>(null);
 
-  const me = useQuery({
+  const meQuery = useQuery({
     queryKey: queryKeys.me,
-    queryFn: fetchMe, // resolves to the user, or null on a 401
-    retry: false, // the error screen has its own "Try again"
-    staleTime: Infinity, // the session does not change by itself; we write it on login, logout and 401
-    refetchOnWindowFocus: false,
+    queryFn: async (): Promise<User | null> => {
+      try {
+        return (await authApi.me()).user;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) return null; // "not logged in" is an answer, not an error
+        throw error;
+      }
+    },
+    staleTime: 5 * 60_000, // coming back to the tab after 5+ minutes re-checks the session
   });
 
-  /** Forget everything that belonged to the previous session (all cached server data except `me`) */
-  const dropUserData = useCallback(() => {
-    queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
-  }, [queryClient]);
+  const startSession = useCallback(
+    (user: User) => {
+      dropUserData(queryClient);
+      queryClient.setQueryData(queryKeys.me, user);
+      setEndedReason(null);
+    },
+    [queryClient],
+  );
 
-  // A 401 from any normal API call means the session is gone: clear it. The route guard does the redirect.
+  const endSession = useCallback(
+    (reason: SessionEndReason) => {
+      setEndedReason(reason);
+      queryClient.setQueryData(queryKeys.me, null); // the route guards redirect to /login on this render
+      dropUserData(queryClient);
+    },
+    [queryClient],
+  );
+
+  // A 401 from any request in the middle of a session: the cookie expired or was revoked
   useEffect(() => {
     setUnauthorizedHandler(() => {
-      if (!queryClient.getQueryData(queryKeys.me)) return; // already logged out: several calls can fail at once
-      dropUserData();
-      queryClient.setQueryData(queryKeys.me, null);
-      toast.info("Your session has expired. Please log in again.");
+      if (!queryClient.getQueryData(queryKeys.me)) return; // already signed out: parallel requests can fail together
+      endSession("expired");
     });
     return () => setUnauthorizedHandler(null);
-  }, [queryClient, dropUserData]);
+  }, [queryClient, endSession]);
 
-  const login = useCallback<AuthContextValue["login"]>(
-    async (input) => {
-      const user = await loginRequest(input);
-      dropUserData(); // never show a previous account's cached data
-      queryClient.setQueryData(queryKeys.me, user);
+  const login = useCallback(
+    async (input: LoginInput) => {
+      startSession((await authApi.login(input)).user);
     },
-    [queryClient, dropUserData],
+    [startSession],
   );
 
-  const register = useCallback<AuthContextValue["register"]>(
-    async (input) => {
-      const user = await registerRequest(input); // registering also logs you in (the server sets the cookie)
-      dropUserData();
-      queryClient.setQueryData(queryKeys.me, user);
+  const register = useCallback(
+    async (input: RegisterInput) => {
+      startSession((await authApi.register(input)).user);
     },
-    [queryClient, dropUserData],
+    [startSession],
   );
 
-  const logout = useCallback<AuthContextValue["logout"]>(async () => {
+  const logout = useCallback(async () => {
     try {
-      await logoutRequest();
-    } catch (err) {
-      if (!(err instanceof ApiError && err.status === 401)) throw err; // a 401 just means "already logged out"
+      await authApi.logout();
+    } catch (error) {
+      // 401 means the session was already gone, which is what we wanted. Anything else (network, 500) is shown to the person.
+      if (!(error instanceof ApiError && error.status === 401)) throw error;
     }
-    dropUserData();
-    queryClient.setQueryData(queryKeys.me, null);
-  }, [queryClient, dropUserData]);
+    endSession("logout");
+  }, [endSession]);
 
-  const retry = useCallback(() => {
-    void me.refetch();
-  }, [me]);
-
-  const user = me.data ?? null;
-  let status: AuthStatus;
-  if (user) status = "authenticated";
-  else if (me.isPending || (me.isError && me.isFetching))
-    status = "loading"; // includes a retry in progress
-  else if (me.isError) status = "error";
-  else status = "unauthenticated";
+  const { data, isPending, isError, isFetching, refetch } = meQuery;
+  const user = data ?? null;
+  // A failed background re-check while we still hold a user does not log anyone out
+  const status: AuthStatus = user
+    ? "authenticated"
+    : isPending
+      ? "loading"
+      : isError
+        ? "error"
+        : "anonymous";
+  const retry = useCallback(() => void refetch(), [refetch]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout, retry }),
-    [user, status, login, register, logout, retry],
+    () => ({ status, user, endedReason, retry, retrying: isFetching, login, register, logout }),
+    [status, user, endedReason, retry, isFetching, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

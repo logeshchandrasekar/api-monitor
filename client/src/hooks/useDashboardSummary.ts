@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDashboardSummary } from "../services/dashboard";
-import { queryKeys } from "../utils/queryKeys";
+import { POLL_DASHBOARD_MS } from "../config";
+import { dashboardApi } from "../services/dashboardApi";
+import { queryKeys } from "../services/queryKeys";
 
-/** UX-1: the dashboard polls every 30 s. TanStack Query pauses the interval while the tab is hidden. */
 export function useDashboardSummary() {
   return useQuery({
     queryKey: queryKeys.dashboardSummary,
-    queryFn: ({ signal }) => getDashboardSummary(signal),
-    refetchInterval: 30_000,
+    queryFn: ({ signal }) => dashboardApi.getSummary(signal),
+    refetchInterval: POLL_DASHBOARD_MS, // UX-1: every 30 s; React Query pauses it while the tab is hidden
   });
 }
