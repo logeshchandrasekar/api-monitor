@@ -6,14 +6,19 @@ export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "id"> & {
   /** Shown in red under the field; also marks it invalid for screen readers. */
   error?: string;
   hint?: string;
+  /** Keeps the label for screen readers but hides it visually (compact rows). */
+  hideLabel?: boolean;
 };
 
-export function Input({ label, error, hint, className, ...rest }: InputProps) {
+export function Input({ label, error, hint, hideLabel, className, ...rest }: InputProps) {
   const id = useId();
   const messageId = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+      <label
+        htmlFor={id}
+        className={cn("block text-sm font-medium", hideLabel ? "sr-only" : "mb-1.5")}
+      >
         {label}
       </label>
       <input

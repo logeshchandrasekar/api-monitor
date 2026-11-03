@@ -109,3 +109,52 @@ export type Paginated<T> = { items: T[]; nextCursor: string | null };
 
 /** The standard error body (API-1). */
 export type ApiErrorBody = { error: { code: string; message: string; details?: unknown } };
+
+// ---- Phase 6 ------------------------------------------------------------------------------
+
+/** GET /api/monitors adds a 24 h uptime to every item: percent with 2 decimals, null until there is a scheduled check. */
+export type MonitorListItem = Monitor & { uptime24h: number | null };
+
+/** GET /api/users/me/limits: what the plan allows and how much of it is used. */
+export type PlanLimits = {
+  plan: Plan;
+  maxMonitors: number;
+  monitorCount: number;
+  minIntervalSec: number;
+  /** Includes 10 s and 30 s outside production. */
+  allowedIntervalsSec: number[];
+  maxTimeoutMs: number;
+  retentionDays: number;
+};
+
+export type StatsRange = "24h" | "7d" | "30d";
+
+/** GET /api/monitors/:id/stats?range=. Scheduled checks only; "successful" includes slow ones. */
+export type MonitorStats = {
+  range: StatsRange;
+  totalChecks: number;
+  successfulChecks: number;
+  slowChecks: number;
+  failedChecks: number;
+  uptimePct: number | null;
+  avgResponseMs: number | null;
+  minResponseMs: number | null;
+  maxResponseMs: number | null;
+};
+
+/** What the create and edit endpoints accept. A saved sensitive header is sent as { name, keepExisting: true }. */
+export type MonitorHeaderInput = { name: string; value?: string; keepExisting?: boolean };
+
+export type MonitorInput = {
+  name: string;
+  url: string;
+  method: string;
+  intervalSec: number;
+  expectedStatus: number;
+  timeoutMs: number;
+  responseThresholdMs: number;
+  followRedirects: boolean;
+  headers: MonitorHeaderInput[];
+  /** null clears the body. */
+  body: string | null;
+};

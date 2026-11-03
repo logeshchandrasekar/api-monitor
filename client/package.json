@@ -10,7 +10,8 @@
     "test": "vitest run",
     "lint": "oxlint",
     "preview": "vite preview",
-    "checkpoint:5": "node scripts/checkpoint5.mjs"
+    "checkpoint:5": "node scripts/checkpoint5.mjs",
+    "checkpoint:6": "node scripts/checkpoint6.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

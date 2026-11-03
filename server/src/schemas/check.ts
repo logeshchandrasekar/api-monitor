@@ -13,3 +13,7 @@ export const listChecksQuerySchema = z.object({
 });
 
 export type ListChecksQuery = z.infer<typeof listChecksQuerySchema>;
+
+export const statsQuerySchema = z.object({ range: z.enum(CHECK_RANGES).default("24h") });
+
+export type StatsQuery = z.infer<typeof statsQuerySchema>;

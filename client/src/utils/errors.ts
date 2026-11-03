@@ -8,7 +8,10 @@ export function getErrorMessage(
   error: unknown,
   fallback = "Something went wrong. Please try again.",
 ): string {
-  return error instanceof ApiError ? error.message : fallback;
+  if (!(error instanceof ApiError)) return fallback;
+  if (error.status === 429) return "Too many attempts. Please wait a moment and try again.";
+  if (error.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
+  return error.message;
 }
 
 /**
@@ -18,7 +21,12 @@ export function getErrorMessage(
  * (Run the invalid-register curl in 5.3 to see which shape your server sends.)
  */
 export function fieldErrorsFrom(error: unknown): FieldErrors {
-  if (!(error instanceof ApiError) || !error.details || typeof error.details !== "object") {
+  if (
+    !(error instanceof ApiError) ||
+    error.status !== 400 ||
+    !error.details ||
+    typeof error.details !== "object"
+  ) {
     return {};
   }
 

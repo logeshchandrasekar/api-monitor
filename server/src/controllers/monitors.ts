@@ -10,6 +10,7 @@ import {
   resumeMonitor,
   updateMonitor,
 } from "../services/monitors.js";
+import { uptime24hFor } from "../services/stats.js";
 import { serializeMonitor } from "../utils/serializers.js";
 import { validated } from "../utils/validated.js";
 
@@ -20,7 +21,14 @@ export const list: RequestHandler = async (req, res) => {
     req.user!.id,
     validated<ListMonitorsQuery>(res, "query"),
   );
-  res.json({ items: items.map((m) => serializeMonitor(m, { detail: false })), nextCursor });
+  const uptime = await uptime24hFor(items.map((m) => m.id)); // one grouped query for the whole page
+  res.json({
+    items: items.map((m) => ({
+      ...serializeMonitor(m, { detail: false }),
+      uptime24h: uptime.get(m.id) ?? null,
+    })),
+    nextCursor,
+  });
 };
 
 export const create: RequestHandler = async (req, res) => {

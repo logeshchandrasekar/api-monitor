@@ -1,4 +1,4 @@
-import { PLAN_LIMITS } from "../config/plans.js";
+import { PLAN_LIMITS, type PlanName } from "../config/plans.js";
 import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import { CHECK_RANGES, type ListChecksQuery } from "../schemas/check.js";
@@ -123,24 +123,29 @@ export async function runManualCheck(
 }
 
 const DAY_MS = 86_400_000;
-const RANGE_MS: Record<(typeof CHECK_RANGES)[number], number> = {
+export const RANGE_MS: Record<(typeof CHECK_RANGES)[number], number> = {
   "1h": 3_600_000,
   "24h": DAY_MS,
   "7d": 7 * DAY_MS,
   "30d": 30 * DAY_MS,
 };
 
-export async function listChecks(owner: Owner, monitorId: string, query: ListChecksQuery) {
-  await getMonitor(owner.id, monitorId); // ownership first (SEC-4)
-
-  const retentionDays = PLAN_LIMITS[owner.plan].retentionDays;
-  if (query.range && RANGE_MS[query.range] > retentionDays * DAY_MS) {
+/** A range longer than the plan's history is refused (shared by the checks list and the stats endpoint). */
+export function assertRangeAllowed(plan: PlanName, range: (typeof CHECK_RANGES)[number]) {
+  const retentionDays = PLAN_LIMITS[plan].retentionDays;
+  if (RANGE_MS[range] > retentionDays * DAY_MS) {
     throw new AppError(
       403,
       "RANGE_NOT_ALLOWED",
-      `The ${owner.plan} plan keeps ${retentionDays} days of history. Choose a shorter range or upgrade.`,
+      `The ${plan} plan keeps ${retentionDays} days of history. Choose a shorter range or upgrade.`,
     );
   }
+}
+
+export async function listChecks(owner: Owner, monitorId: string, query: ListChecksQuery) {
+  await getMonitor(owner.id, monitorId); // ownership first (SEC-4)
+
+  if (query.range) assertRangeAllowed(owner.plan, query.range);
 
   const rows = await prisma.check.findMany({
     where: {

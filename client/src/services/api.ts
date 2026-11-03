@@ -6,13 +6,22 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly details: unknown;
+  /** The server's x-request-id: quote it when reporting a problem, it finds the log line. */
+  readonly requestId: string | null;
 
-  constructor(status: number, code: string, message: string, details?: unknown) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    details?: unknown,
+    requestId: string | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.details = details;
+    this.requestId = requestId;
   }
 }
 
@@ -75,8 +84,12 @@ async function request<T = void>(path: string, options: RequestOptions = {}): Pr
       credentials: "include",
       signal,
       // JSON content type on every write, even without a body.
-      headers: method === "GET" ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers:
+        method === "GET"
+          ? { Accept: "application/json" }
+          : { Accept: "application/json", "Content-Type": "application/json" },
+      // A write without a body (pause, resume, duplicate, check now) still sends {}: the server answers 415 to non-JSON writes
+      body: body === undefined ? (method === "GET" ? undefined : "{}") : JSON.stringify(body),
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -106,9 +119,10 @@ async function request<T = void>(path: string, options: RequestOptions = {}): Pr
 
     const error = new ApiError(
       response.status,
-      serverError?.code ?? "HTTP_ERROR",
+      serverError?.code ?? "BAD_RESPONSE",
       serverError?.message ?? fallbackMessage(response.status),
       serverError?.details,
+      response.headers.get("x-request-id"),
     );
 
     if (response.status === 401 && !skipUnauthorizedHandler) {
@@ -118,7 +132,7 @@ async function request<T = void>(path: string, options: RequestOptions = {}): Pr
     throw error;
   }
 
-  return data as T;
+  return (response.status === 204 ? undefined : data) as T;
 }
 
 /** HTTP methods used by the frontend. */
