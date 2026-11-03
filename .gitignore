@@ -14,3 +14,5 @@ server/.windsurf/skills/
 
 server/.agents/
 jar.txt
+cookies.txt
+*.cookies
