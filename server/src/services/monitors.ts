@@ -172,7 +172,6 @@ export async function updateMonitor(owner: Owner, id: string, input: UpdateMonit
   const now = new Date();
   const soonest = new Date(now.getTime() + intervalSec * 1000);
 
-  // TODO(Phase 4): when `material` is true, also resolve open incidents with CONFIG_CHANGED
   return prisma.$transaction(async (tx) => {
     // Takes the monitor row lock first, then resolves incidents. A check result for the old configuration can no longer slip in between.
     if (material) await resolveOpenIncidents(tx, id, "CONFIG_CHANGED", now);
@@ -209,7 +208,6 @@ export async function deleteMonitor(userId: string, id: string) {
 export async function pauseMonitor(userId: string, id: string) {
   const monitor = await findOwned(userId, id);
   if (monitor.isPaused) return monitor;
-  // TODO(Phase 4): resolve open incidents with PAUSED
   const now = new Date();
   return prisma.$transaction(async (tx) => {
     await resolveOpenIncidents(tx, id, "PAUSED", now);

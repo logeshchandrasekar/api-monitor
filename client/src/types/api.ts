@@ -158,3 +158,61 @@ export type MonitorInput = {
   /** null clears the body. */
   body: string | null;
 };
+
+// ---- Phase 7: analytics -------------------------------------------------------------------------
+
+/** One chart point: all the scheduled checks that fell into one time bucket. total 0 is a gap. */
+export type AnalyticsPoint = {
+  /** Start of the bucket (UTC clock boundary), ISO 8601. */
+  at: string;
+  total: number;
+  /** Includes slow ones, like AnalyticsStats.successfulChecks. */
+  successful: number;
+  slow: number;
+  failed: number;
+  /** null when the bucket has no checks. */
+  uptimePct: number | null;
+  /** null when no check in the bucket got an answer (a timeout has no response time). */
+  avgMs: number | null;
+  p95Ms: number | null;
+  maxMs: number | null;
+};
+
+export type AnalyticsStats = {
+  /** The last scheduled check, the same number the monitor header shows. */
+  currentMs: number | null;
+  avgMs: number | null;
+  minMs: number | null;
+  maxMs: number | null;
+  /** 95 % of the checks were faster than this. */
+  p95Ms: number | null;
+  uptimePct: number | null;
+  totalChecks: number;
+  successfulChecks: number;
+  slowChecks: number;
+  failedChecks: number;
+  /** Incidents that STARTED inside the range. */
+  totalIncidents: number;
+};
+
+/** An incident that overlaps the range, for shading the uptime chart. */
+export type AnalyticsIncident = {
+  id: string;
+  type: IncidentType;
+  status: IncidentStatus;
+  startedAt: string;
+  resolvedAt: string | null;
+};
+
+/** GET /api/monitors/:id/analytics?range= */
+export type MonitorAnalytics = {
+  range: StatsRange;
+  /** Width of one point in seconds: 900 (24 h), 3600 (7 d) or 21600 (30 d). */
+  bucketSec: number;
+  from: string;
+  to: string;
+  stats: AnalyticsStats;
+  /** Consecutive buckets, oldest first: 97, 169 or 121 points. */
+  series: AnalyticsPoint[];
+  incidents: AnalyticsIncident[];
+};

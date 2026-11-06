@@ -1,18 +1,10 @@
 import { prisma } from "../lib/prisma.js";
 import type { StatsQuery } from "../schemas/check.js";
+import { uptimeOf } from "../utils/uptime.js";
 import { RANGE_MS, assertRangeAllowed } from "./checks.js";
 import { getMonitor, type Owner } from "./monitors.js";
 
 const DAY_MS = 86_400_000;
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-/**
- * Same rule as the dashboard (ENG-4, DAT-3): only SCHEDULED checks count, and SLOW is "up but degraded".
- * A manual "Check now" must never move an uptime figure.
- */
-function uptimeOf(up: number, total: number): number | null {
-  return total === 0 ? null : round2((up / total) * 100);
-}
 
 /** Uptime over the last 24 h for many monitors in ONE query (the monitor list shows it per row). */
 export async function uptime24hFor(monitorIds: string[]): Promise<Map<string, number | null>> {

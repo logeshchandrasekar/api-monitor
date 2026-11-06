@@ -4,6 +4,7 @@ import type {
   IncidentStatus,
   MonitorDetail,
   MonitorInput,
+  MonitorAnalytics,
   MonitorListItem,
   MonitorStats,
   Paginated,
@@ -62,4 +63,11 @@ export const monitorsApi = {
     api<{ stats: MonitorStats }>(`/monitors/${id}/stats`, { query: { range }, signal }).then(
       (r) => r.stats,
     ),
+
+  /** Statistics, chart series and incident periods in one request (Phase 7). */
+  analytics: (id: string, range: StatsRange, signal?: AbortSignal) =>
+    api<{ analytics: MonitorAnalytics }>(`/monitors/${id}/analytics`, {
+      query: { range },
+      signal,
+    }).then((r) => r.analytics),
 };

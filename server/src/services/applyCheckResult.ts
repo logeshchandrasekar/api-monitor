@@ -2,31 +2,13 @@ import { emitIncidentEvents, type IncidentEvent } from "../lib/incidentEvents.js
 import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import type { CheckResult } from "./checkRunner.js";
-import { lockMonitor, openKeyOf, secondsBetween } from "./incidentLifecycle.js";
-import { assertNever, evaluate, type IncidentType } from "./stateMachine.js";
+import { lockMonitor, openKeyOf, reasonFor, secondsBetween } from "./incidentLifecycle.js";
+import { assertNever, evaluate } from "./stateMachine.js";
 
 /** What a check carries from the moment the scheduler claimed it: which monitor, and which "version" of it. */
 export type Claim = { id: string; stateEpoch: number };
 
 export type ApplyResult = { applied: boolean; events: IncidentEvent[] };
-
-function reasonFor(
-  type: IncidentType,
-  ctx: {
-    failStreak: number;
-    slowStreak: number;
-    responseThresholdMs: number;
-    errorMessage: string | null;
-  },
-): string {
-  if (type === "DOWN") {
-    const base = `${ctx.failStreak} failed checks in a row.`;
-    return ctx.errorMessage ? `${base} Last error: ${ctx.errorMessage}` : base;
-  }
-  return ctx.slowStreak <= 1
-    ? `The service is answering again but slowly: response time is above ${ctx.responseThresholdMs} ms.`
-    : `Response time stayed above ${ctx.responseThresholdMs} ms for ${ctx.slowStreak} checks in a row.`;
-}
 
 /**
  * Stores one SCHEDULED check result and runs the state machine, in ONE transaction:
