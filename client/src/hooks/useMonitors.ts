@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { POLL_DASHBOARD_MS, POLL_DETAIL_MS } from "../config";
 import { monitorsApi } from "../services/monitorsApi";
 import { queryKeys } from "../services/queryKeys";
@@ -64,5 +64,20 @@ export function useMonitorStats(id: string, range: StatsRange) {
     queryKey: queryKeys.monitorStats(id, range),
     queryFn: ({ signal }) => monitorsApi.stats(id, range, signal),
     refetchInterval: POLL_DETAIL_MS,
+  });
+}
+
+/**
+ * Statistics and chart data for one range, polled like the other detail queries. While a new range loads,
+ * the previous result stays on screen (the caller dims it with isPlaceholderData) instead of flashing a
+ * skeleton. `enabled` is false for a range the plan does not keep history for: no request is made.
+ */
+export function useMonitorAnalytics(id: string, range: StatsRange, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.monitorAnalytics(id, range),
+    queryFn: ({ signal }) => monitorsApi.analytics(id, range, signal),
+    refetchInterval: POLL_DETAIL_MS,
+    placeholderData: keepPreviousData,
+    enabled,
   });
 }

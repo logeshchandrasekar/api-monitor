@@ -1,4 +1,5 @@
 import { Router } from "express";
+import * as analytics from "../controllers/analytics.js";
 import * as checks from "../controllers/checks.js";
 import * as incidents from "../controllers/incidents.js";
 import * as monitors from "../controllers/monitors.js";
@@ -6,7 +7,7 @@ import * as stats from "../controllers/stats.js";
 import { manualCheckLimiter } from "../middleware/manualCheckLimiter.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { validate } from "../middleware/validate.js";
-import { listChecksQuerySchema, statsQuerySchema } from "../schemas/check.js";
+import { analyticsQuerySchema, listChecksQuerySchema, statsQuerySchema } from "../schemas/check.js";
 import { listMonitorIncidentsQuerySchema } from "../schemas/incident.js";
 import {
   createMonitorSchema,
@@ -43,6 +44,11 @@ monitorsRouter.get(
   "/:id/stats",
   validate({ params: idParamsSchema, query: statsQuerySchema }),
   stats.get,
+);
+monitorsRouter.get(
+  "/:id/analytics",
+  validate({ params: idParamsSchema, query: analyticsQuerySchema }),
+  analytics.get,
 );
 monitorsRouter.get(
   "/:id/incidents",

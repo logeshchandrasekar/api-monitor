@@ -6,7 +6,7 @@ import { ErrorState } from "../components/ErrorState";
 import { ChecksTable } from "../components/monitors/ChecksTable";
 import { IncidentHistory } from "../components/monitors/IncidentHistory";
 import { MonitorActions } from "../components/monitors/MonitorActions";
-import { StatsCard } from "../components/monitors/StatsCard";
+import { AnalyticsSection } from "../components/monitors/AnalyticsSection";
 import { StatusBadge } from "../components/StatusBadge";
 import { ButtonLink } from "../components/ui/ButtonLink";
 import { Card } from "../components/ui/Card";
@@ -123,7 +123,7 @@ export function MonitorDetailPage() {
       </Card>
 
       <div className="space-y-6">
-        <StatsCard monitorId={m.id} currentMs={m.lastResponseTimeMs} />
+        <AnalyticsSection monitorId={m.id} thresholdMs={m.responseThresholdMs} />
         <IncidentHistory monitorId={m.id} now={now} />
         <ChecksTable monitorId={m.id} now={now} />
         <div className="flex justify-end">
