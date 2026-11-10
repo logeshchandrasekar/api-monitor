@@ -60,6 +60,8 @@ export async function seedDemo(options: { days?: number; nowMs?: number } = {}) 
             lastResponseTimeMs: final.lastResponseTimeMs,
             lastStatusChangeAt: final.lastStatusChangeAt,
             nextCheckAt: FROZEN_NEXT_CHECK,
+            // Every monitor has an alert rule (Phase 8), so the demo account's settings panel has something to show
+            alertRule: { create: {} },
           },
         });
 

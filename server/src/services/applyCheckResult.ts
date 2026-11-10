@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import type { CheckResult } from "./checkRunner.js";
 import { lockMonitor, openKeyOf, reasonFor, secondsBetween } from "./incidentLifecycle.js";
+import { enqueueOpened, enqueueRecovered, isolated } from "./notifications.js";
 import { assertNever, evaluate } from "./stateMachine.js";
 
 /** What a check carries from the moment the scheduler claimed it: which monitor, and which "version" of it. */
@@ -12,7 +13,8 @@ export type ApplyResult = { applied: boolean; events: IncidentEvent[] };
 
 /**
  * Stores one SCHEDULED check result and runs the state machine, in ONE transaction:
- * check row, monitor counters/status/last* columns, incidents. Events are emitted only after the commit.
+ * check row, monitor counters/status/last* columns, incidents and the alert's NotificationLog row (ALT-2).
+ * Events are emitted only after the commit. A problem while queueing an alert never loses the check (see `isolated`).
  *
  * Returns { applied: false } and stores NOTHING when the result is stale: the monitor was deleted,
  * paused, or edited/resumed (epoch changed) while the check was running. Such a result describes
@@ -65,6 +67,10 @@ export async function applyCheckResult(claim: Claim, result: CheckResult): Promi
             },
           });
           out.push({ type: "INCIDENT_RESOLVED", incident: closed, escalated: event.escalated });
+          // ALT-2: the notification row is written in THIS transaction; the dispatcher sends it after the commit
+          await isolated(tx, "enqueue recovered", () =>
+            enqueueRecovered(tx, m, closed, event.escalated),
+          );
           break;
         }
         case "OPEN": {
@@ -86,6 +92,7 @@ export async function applyCheckResult(claim: Claim, result: CheckResult): Promi
             },
           });
           out.push({ type: "INCIDENT_OPENED", incident });
+          await isolated(tx, "enqueue opened", () => enqueueOpened(tx, m, incident));
           break;
         }
         case "COUNT":
