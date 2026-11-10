@@ -41,8 +41,7 @@ export function IncidentHistory({ monitorId, now }: { monitorId: string; now: nu
 
       {incidents.length > 0 && (
         <>
-          <ul className="-mx-5 -mb-5 divide-y divide-line border-t border-line">
-            {incidents.map((i) => (
+          <ul className="-mx-5 -mb-5 -mt-5 divide-y divide-line">            {incidents.map((i) => (
               <IncidentRow key={i.id} incident={i} now={now} showMonitor={false} />
             ))}
           </ul>

@@ -104,8 +104,7 @@ export function DashboardPage() {
             </Link>
           }
         >
-          <ul className="-mx-5 -mb-5 divide-y divide-line border-t border-line">
-            {s.activeIncidents.slice(0, 5).map((i) => (
+          <ul className="-mx-5 -mb-5 -mt-5 divide-y divide-line">            {s.activeIncidents.slice(0, 5).map((i) => (
               <IncidentRow key={i.id} incident={i} now={now} />
             ))}
           </ul>
