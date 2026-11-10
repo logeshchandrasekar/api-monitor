@@ -41,7 +41,6 @@ export const RESOLUTION_LABEL: Record<IncidentResolution, string> = {
   CONFIG_CHANGED: "Monitor settings changed",
 };
 
-
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   DOWN: "Down alert",
   DEGRADED: "Slow alert",

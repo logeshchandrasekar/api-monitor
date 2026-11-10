@@ -61,7 +61,6 @@ export function IncidentStatusBadge({ status }: { status: IncidentStatus }) {
   );
 }
 
-
 const notificationTypeStyle: Record<NotificationType, string> = {
   DOWN: "bg-down-soft text-down-ink",
   DEGRADED: "bg-degraded-soft text-degraded-ink",

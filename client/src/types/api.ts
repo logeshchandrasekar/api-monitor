@@ -217,7 +217,6 @@ export type MonitorAnalytics = {
   incidents: AnalyticsIncident[];
 };
 
-
 /** GET and PUT /api/monitors/:id/alerts (Phase 8). */
 export type AlertSettings = {
   notifyOnDown: boolean;
