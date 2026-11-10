@@ -1,4 +1,5 @@
 import { Router } from "express";
+import * as alerts from "../controllers/alerts.js";
 import * as analytics from "../controllers/analytics.js";
 import * as checks from "../controllers/checks.js";
 import * as incidents from "../controllers/incidents.js";
@@ -6,7 +7,9 @@ import * as monitors from "../controllers/monitors.js";
 import * as stats from "../controllers/stats.js";
 import { manualCheckLimiter } from "../middleware/manualCheckLimiter.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { testEmailLimiter } from "../middleware/testEmailLimiter.js";
 import { validate } from "../middleware/validate.js";
+import { listNotificationsQuerySchema, updateAlertRuleSchema } from "../schemas/alerts.js";
 import { analyticsQuerySchema, listChecksQuerySchema, statsQuerySchema } from "../schemas/check.js";
 import { listMonitorIncidentsQuerySchema } from "../schemas/incident.js";
 import {
@@ -54,4 +57,16 @@ monitorsRouter.get(
   "/:id/incidents",
   validate({ params: idParamsSchema, query: listMonitorIncidentsQuerySchema }),
   incidents.listForMonitor,
+);
+monitorsRouter.get("/:id/alerts", withId, alerts.get);
+monitorsRouter.put(
+  "/:id/alerts",
+  validate({ params: idParamsSchema, body: updateAlertRuleSchema }),
+  alerts.update,
+);
+monitorsRouter.post("/:id/alerts/test", withId, testEmailLimiter, alerts.test);
+monitorsRouter.get(
+  "/:id/notifications",
+  validate({ params: idParamsSchema, query: listNotificationsQuerySchema }),
+  alerts.history,
 );
