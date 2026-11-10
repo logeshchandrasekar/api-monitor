@@ -1,5 +1,6 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
+import { startDispatcher } from "./jobs/notificationDispatcher.js";
 import { startScheduler } from "./jobs/scheduler.js";
 import { logger } from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
@@ -15,6 +16,10 @@ const server = app.listen(env.PORT, () => {
 const scheduler = env.ENABLE_SCHEDULER ? startScheduler() : null;
 if (!scheduler) logger.info("Scheduler disabled (ENABLE_SCHEDULER=false)");
 
+// Sends the alert emails that applyCheckResult queued. Same idea: in-process for the MVP, switchable off (Phase 8).
+const dispatcher = env.ENABLE_DISPATCHER ? startDispatcher() : null;
+if (!dispatcher) logger.info("Alert dispatcher disabled (ENABLE_DISPATCHER=false)");
+
 let shuttingDown = false;
 async function shutdown(signal: string) {
   if (shuttingDown) return;
@@ -23,6 +28,7 @@ async function shutdown(signal: string) {
   setTimeout(() => process.exit(1), 15_000).unref(); // hard stop if anything hangs
 
   await scheduler?.stop(10_000); // stop ticking, give in-flight checks up to 10 s to finish and be stored
+  await dispatcher?.stop(10_000); // after the scheduler: it can still queue an alert while its last checks finish
   server.closeIdleConnections();
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await prisma.$disconnect();

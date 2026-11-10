@@ -18,7 +18,7 @@ export function ChartLegend({ items }: { items: LegendItem[] }) {
             aria-hidden="true"
             className={cn(
               "inline-block",
-              item.kind === "box" ? "size-3 rounded-[2px]" : "w-5",
+              item.kind === "box" ? "size-3 rounded-xs" : "w-5",
               item.kind === "line" && "h-0.5 rounded-full",
               item.kind === "dash" && "h-0 border-t-2 border-dashed",
               item.className,

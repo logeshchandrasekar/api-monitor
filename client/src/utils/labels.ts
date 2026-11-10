@@ -4,6 +4,8 @@ import type {
   IncidentResolution,
   IncidentStatus,
   IncidentType,
+  NotificationStatus,
+  NotificationType,
 } from "../types/api";
 
 /** Plain-language names for the server's enums. Every enum shown to a person goes through here. */
@@ -37,4 +39,18 @@ export const RESOLUTION_LABEL: Record<IncidentResolution, string> = {
   RECOVERED: "Recovered",
   PAUSED: "Monitor was paused",
   CONFIG_CHANGED: "Monitor settings changed",
+};
+
+export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
+  DOWN: "Down alert",
+  DEGRADED: "Slow alert",
+  RECOVERED: "Recovery",
+  TEST: "Test email",
+};
+
+export const NOTIFICATION_STATUS_LABEL: Record<NotificationStatus, string> = {
+  QUEUED: "Queued",
+  SENT: "Sent",
+  SUPPRESSED: "Suppressed",
+  FAILED: "Failed",
 };

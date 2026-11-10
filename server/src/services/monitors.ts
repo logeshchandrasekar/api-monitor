@@ -1,5 +1,5 @@
 import { PLAN_LIMITS, allowedIntervals, formatInterval, type PlanName } from "../config/plans.js";
-import type { Prisma } from "../generated/prisma/client.js";
+import type { AlertRule, Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import type {
   CreateMonitorInput,
@@ -81,9 +81,20 @@ async function insertWithinLimit(
     await tx.$queryRaw`SELECT id FROM users WHERE id = ${owner.id} FOR UPDATE`;
     const count = await tx.monitor.count({ where: { userId: owner.id } });
     if (count >= PLAN_LIMITS[owner.plan].maxMonitors) throw limitError(owner.plan);
-    return tx.monitor.create({ data: { ...data, userId: owner.id } });
+    // Every monitor starts with an alert rule (8.1). A caller can pass its own `alertRule` to replace the defaults.
+    return tx.monitor.create({
+      data: { alertRule: { create: {} }, ...data, userId: owner.id },
+    });
   });
 }
+
+const alertSettingsOf = (rule: AlertRule) => ({
+  notifyOnDown: rule.notifyOnDown,
+  notifyOnRecovery: rule.notifyOnRecovery,
+  notifyOnSlow: rule.notifyOnSlow,
+  cooldownMinutes: rule.cooldownMinutes,
+  recipientEmail: rule.recipientEmail,
+});
 
 /** Back to "never checked": used after a material edit and on resume. */
 const freshState = (now: Date) => ({
@@ -229,6 +240,7 @@ export async function resumeMonitor(userId: string, id: string) {
 
 export async function duplicateMonitor(owner: Owner, id: string) {
   const src = await findOwned(owner.id, id);
+  const srcRule = await prisma.alertRule.findUnique({ where: { monitorId: id } });
   const name = src.name.length > 93 ? src.name.slice(0, 93) : src.name;
   return insertWithinLimit(owner, {
     name: `${name} (copy)`,
@@ -245,6 +257,8 @@ export async function duplicateMonitor(owner: Owner, id: string) {
     failureThreshold: src.failureThreshold,
     slowThreshold: src.slowThreshold,
     tags: src.tags,
+    // A copy keeps the original's alert settings: the same checkboxes, cooldown and recipient
+    alertRule: { create: srcRule ? alertSettingsOf(srcRule) : {} },
     nextCheckAt: firstCheckAt(src.intervalSec),
   });
 }

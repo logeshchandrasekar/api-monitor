@@ -15,6 +15,8 @@ export const queryKeys = {
   monitorIncidents: (id: string) => ["monitors", "incidents", id] as const,
   monitorStats: (id: string, range: string) => ["monitors", "stats", id, range] as const,
   monitorAnalytics: (id: string, range: string) => ["monitors", "analytics", id, range] as const,
+  monitorAlerts: (id: string) => ["monitors", "alerts", id] as const,
+  monitorNotifications: (id: string) => ["monitors", "notifications", id] as const,
 
   incidents: ["incidents"] as const,
   incidentList: (status: string, monitorId: string) =>

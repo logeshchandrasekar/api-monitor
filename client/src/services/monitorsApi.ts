@@ -1,4 +1,6 @@
 import type {
+  AlertSettings,
+  AlertSettingsInput,
   Check,
   Incident,
   IncidentStatus,
@@ -7,6 +9,7 @@ import type {
   MonitorAnalytics,
   MonitorListItem,
   MonitorStats,
+  NotificationItem,
   Paginated,
   StatsRange,
 } from "../types/api";
@@ -70,4 +73,23 @@ export const monitorsApi = {
       query: { range },
       signal,
     }).then((r) => r.analytics),
+
+  /** The alert rule: three checkboxes, cooldown and recipient (Phase 8). */
+  alerts: (id: string, signal?: AbortSignal) =>
+    api<{ alerts: AlertSettings }>(`/monitors/${id}/alerts`, { signal }).then((r) => r.alerts),
+
+  /** PUT replaces the whole rule, so send every field. */
+  saveAlerts: (id: string, input: AlertSettingsInput) =>
+    api<{ alerts: AlertSettings }>(`/monitors/${id}/alerts`, { method: "PUT", body: input }).then(
+      (r) => r.alerts,
+    ),
+
+  /** Sends a real email right now to the saved recipient. A failure is a 502 with a readable message. */
+  sendTestEmail: (id: string) =>
+    api<{ notification: NotificationItem }>(`/monitors/${id}/alerts/test`, {
+      method: "POST",
+    }).then((r) => r.notification),
+
+  notifications: (id: string, query: Page, signal?: AbortSignal) =>
+    api<Paginated<NotificationItem>>(`/monitors/${id}/notifications`, { query, signal }),
 };

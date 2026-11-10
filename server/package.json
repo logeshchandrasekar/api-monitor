@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "checkpoint:2": "node scripts/checkpoint2.mjs",
     "checkpoint:3": "node scripts/checkpoint3.mjs",
-    "checkpoint:4": "node scripts/checkpoint4.mjs"
+    "checkpoint:4": "node scripts/checkpoint4.mjs",
+    "checkpoint:8": "node scripts/checkpoint8.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
@@ -28,6 +29,7 @@
     "helmet": "^8.3.0",
     "ipaddr.js": "^1.9.1",
     "jose": "^6.2.13",
+    "nodemailer": "^10.4.0",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
@@ -39,6 +41,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "pino-pretty": "^13.2.0",

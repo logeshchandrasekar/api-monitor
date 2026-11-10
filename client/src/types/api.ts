@@ -216,3 +216,38 @@ export type MonitorAnalytics = {
   series: AnalyticsPoint[];
   incidents: AnalyticsIncident[];
 };
+
+/** GET and PUT /api/monitors/:id/alerts (Phase 8). */
+export type AlertSettings = {
+  notifyOnDown: boolean;
+  notifyOnRecovery: boolean;
+  notifyOnSlow: boolean;
+  cooldownMinutes: number;
+  /** What was saved. null means "my account email". */
+  recipientEmail: string | null;
+  /** Where mail will really go: the saved recipient, or the account email. */
+  effectiveRecipient: string;
+};
+
+/** What PUT sends: every field, because PUT replaces the whole rule. */
+export type AlertSettingsInput = Omit<AlertSettings, "effectiveRecipient">;
+
+export type NotificationType = "DOWN" | "DEGRADED" | "RECOVERED" | "TEST";
+export type NotificationStatus = "QUEUED" | "SENT" | "SUPPRESSED" | "FAILED";
+
+/** One row of a monitor's notification history. */
+export type NotificationItem = {
+  id: string;
+  incidentId: string | null;
+  type: NotificationType;
+  status: NotificationStatus;
+  recipient: string;
+  attempts: number;
+  /** A short safe sentence for a failed or retrying send. */
+  error: string | null;
+  /** Why a row was suppressed. */
+  note: string | null;
+  eventAt: string;
+  sentAt: string | null;
+  createdAt: string;
+};
