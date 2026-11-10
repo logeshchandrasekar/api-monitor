@@ -1,6 +1,18 @@
-import type { CheckOutcome, IncidentStatus, IncidentType } from "../types/api";
+import type {
+  CheckOutcome,
+  IncidentStatus,
+  IncidentType,
+  NotificationStatus,
+  NotificationType,
+} from "../types/api";
 import { cn } from "../utils/cn";
-import { INCIDENT_STATUS_LABEL, INCIDENT_TYPE_LABEL, OUTCOME_LABEL } from "../utils/labels";
+import {
+  INCIDENT_STATUS_LABEL,
+  INCIDENT_TYPE_LABEL,
+  NOTIFICATION_STATUS_LABEL,
+  NOTIFICATION_TYPE_LABEL,
+  OUTCOME_LABEL,
+} from "../utils/labels";
 
 const pill = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
 
@@ -45,6 +57,35 @@ export function IncidentStatusBadge({ status }: { status: IncidentStatus }) {
       )}
     >
       {INCIDENT_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+
+const notificationTypeStyle: Record<NotificationType, string> = {
+  DOWN: "bg-down-soft text-down-ink",
+  DEGRADED: "bg-degraded-soft text-degraded-ink",
+  RECOVERED: "bg-healthy-soft text-healthy-ink",
+  TEST: "bg-subtle text-fg-muted ring-1 ring-line",
+};
+
+export function NotificationTypeBadge({ type }: { type: NotificationType }) {
+  return (
+    <span className={cn(pill, notificationTypeStyle[type])}>{NOTIFICATION_TYPE_LABEL[type]}</span>
+  );
+}
+
+const notificationStatusStyle: Record<NotificationStatus, string> = {
+  SENT: "bg-healthy-soft text-healthy-ink",
+  QUEUED: "bg-subtle text-fg-muted ring-1 ring-line",
+  SUPPRESSED: "bg-degraded-soft text-degraded-ink",
+  FAILED: "bg-down-soft text-down-ink",
+};
+
+export function NotificationStatusBadge({ status }: { status: NotificationStatus }) {
+  return (
+    <span className={cn(pill, notificationStatusStyle[status])}>
+      {NOTIFICATION_STATUS_LABEL[status]}
     </span>
   );
 }
