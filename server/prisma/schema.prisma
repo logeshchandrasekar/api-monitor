@@ -80,8 +80,10 @@ model Monitor {
   createdAt           DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime      @updatedAt @db.Timestamptz(3)
 
-  checks              Check[]
-  incidents           Incident[]
+  checks        Check[]
+  incidents     Incident[]
+  alertRule     AlertRule?
+  notifications NotificationLog[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([isPaused, nextCheckAt])
@@ -159,6 +161,72 @@ model Incident {
   // while any number of resolved incidents (all with NULL) can exist.
   openKey      String?           @unique
 
+  notifications NotificationLog[]
+
   @@index([monitorId, startedAt(sort: Desc)])
   @@map("incidents")
+}
+
+
+enum NotificationType {
+  DOWN
+  DEGRADED
+  RECOVERED
+  // A "Send test email" click. Not in the PRD patch's enum; it lets the history show test sends too.
+  TEST
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  SUPPRESSED
+  FAILED
+}
+
+// One row per monitor (DAT-2). Created with the defaults when the monitor is created.
+model AlertRule {
+  id               String   @id @default(uuid())
+  monitorId        String   @unique
+  monitor          Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  notifyOnDown     Boolean  @default(true)
+  notifyOnRecovery Boolean  @default(true)
+  notifyOnSlow     Boolean  @default(true)
+  cooldownMinutes  Int      @default(30)
+  // NULL means "the account's own email"
+  recipientEmail   String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("alert_rules")
+}
+
+// What was (or was not) sent. A QUEUED row is written in the SAME transaction as the incident change (ALT-2);
+// the dispatcher sends it after the commit.
+model NotificationLog {
+  id            String             @id @default(uuid())
+  monitorId     String
+  monitor       Monitor            @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  incidentId    String?
+  incident      Incident?          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  type          NotificationType
+  status        NotificationStatus @default(QUEUED)
+  // The address at the moment the row was written (the rule's recipient, or the account email)
+  recipient     String
+  // When the thing happened (the check's time), not when the row was written: the cooldown compares these
+  eventAt       DateTime           @db.Timestamptz(3)
+  attempts      Int                @default(0)
+  // The dispatcher only picks QUEUED rows whose nextAttemptAt has passed (backoff and claim lease)
+  nextAttemptAt DateTime           @default(now()) @db.Timestamptz(3)
+  sentAt        DateTime?          @db.Timestamptz(3)
+  // A short, safe sentence for a FAILED row. Never the raw SMTP error.
+  error         String?
+  // Why a row is SUPPRESSED
+  note          String?
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+
+  // At most one DOWN / DEGRADED / RECOVERED row per incident (TEST rows have no incident)
+  @@unique([incidentId, type])
+  @@index([monitorId, createdAt(sort: Desc)])
+  @@index([status, nextAttemptAt])
+  @@map("notification_logs")
 }
