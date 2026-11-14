@@ -7,11 +7,12 @@ import type {
 } from "../types/api";
 
 /** The ranges the selector offers. `days` is compared with the plan's history (PlanLimits.retentionDays). */
-export const ANALYTICS_RANGES: { value: StatsRange; label: string; days: number }[] = [
-  { value: "24h", label: "Last 24 hours", days: 1 },
-  { value: "7d", label: "Last 7 days", days: 7 },
-  { value: "30d", label: "Last 30 days", days: 30 },
-];
+export const ANALYTICS_RANGES: { value: StatsRange; label: string; short: string; days: number }[] =
+  [
+    { value: "24h", label: "Last 24 hours", short: "24 h", days: 1 },
+    { value: "7d", label: "Last 7 days", short: "7 d", days: 7 },
+    { value: "30d", label: "Last 30 days", short: "30 d", days: 30 },
+  ];
 
 /** A range is locked when it is longer than the history the plan keeps (FREE: 7 days). */
 export function isRangeLocked(range: StatsRange, retentionDays: number | undefined): boolean {

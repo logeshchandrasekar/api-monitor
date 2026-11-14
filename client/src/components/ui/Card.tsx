@@ -12,7 +12,7 @@ type CardProps = {
 
 export function Card({ title, description, action, children, className }: CardProps) {
   return (
-    <section className={cn("rounded-xl border border-line bg-surface shadow-sm", className)}>
+    <section className={cn("rounded-xl border border-line bg-surface", className)}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>

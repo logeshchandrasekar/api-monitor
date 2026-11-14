@@ -20,8 +20,9 @@ export function Select({ label, error, hint, className, children, ...rest }: Sel
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         className={cn(
-          "h-10 w-full rounded-lg border bg-surface px-3 text-sm",
-          error ? "border-red-500" : "border-line",
+          "h-10 w-full rounded-control border bg-surface px-3 text-sm",
+          "transition-colors hover:border-fg-muted/50",
+          error ? "border-down" : "border-line",
           className,
         )}
         {...rest}
@@ -29,7 +30,7 @@ export function Select({ label, error, hint, className, children, ...rest }: Sel
         {children}
       </select>
       {error ? (
-        <p id={`${id}-error`} className="mt-1.5 text-sm text-red-600 dark:text-red-400">
+        <p id={`${id}-error`} className="mt-1.5 text-sm text-down-ink">
           {error}
         </p>
       ) : hint ? (

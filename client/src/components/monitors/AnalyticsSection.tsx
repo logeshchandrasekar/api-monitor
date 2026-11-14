@@ -16,7 +16,6 @@ import { formatMs } from "../../utils/time";
 import { ErrorState } from "../ErrorState";
 import { Alert } from "../ui/Alert";
 import { Card } from "../ui/Card";
-import { Select } from "../ui/Select";
 import { Skeleton } from "../ui/Skeleton";
 
 // Recharts is the biggest dependency of the app. Loading the charts on demand keeps it out of the first
@@ -30,8 +29,11 @@ function Figure({ label, value, hint }: { label: string; value: string; hint?: s
   return (
     <div>
       <dt className="text-xs text-fg-muted">{label}</dt>
-      <dd className="mt-0.5 text-xl font-semibold tracking-tight">{value}</dd>
-      {hint && <p className="text-xs text-fg-muted">{hint}</p>}
+      <dd className="mt-0.5">
+        <span className="data text-base font-semibold">{value}</span>
+        {/* Inside the <dd>: a <dl> may only contain <dt> and <dd> groups */}
+        {hint && <span className="block text-xs text-fg-muted">{hint}</span>}
+      </dd>
     </div>
   );
 }
@@ -39,12 +41,12 @@ function Figure({ label, value, hint }: { label: string; value: string; hint?: s
 function StatGrid({ data }: { data: MonitorAnalytics }) {
   const s = data.stats;
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
       <Figure label="Uptime" value={formatPercent(s.uptimePct)} />
-      <Figure label="Current response" value={formatMs(s.currentMs)} hint="last scheduled check" />
       <Figure label="Average response" value={formatMs(s.avgMs)} />
       <Figure label="p95 response" value={formatMs(s.p95Ms)} hint="95 % of checks were faster" />
       <Figure label="Fastest / slowest" value={`${formatMs(s.minMs)} / ${formatMs(s.maxMs)}`} />
+      <Figure label="Current response" value={formatMs(s.currentMs)} hint="last scheduled check" />
       <Figure label="Total checks" value={formatNumber(s.totalChecks)} />
       <Figure
         label="Successful"
@@ -58,6 +60,49 @@ function StatGrid({ data }: { data: MonitorAnalytics }) {
         hint="started in this range"
       />
     </dl>
+  );
+}
+
+/** 24 h / 7 d / 30 d as one click each. A range the plan does not keep stays clickable and explains itself. */
+function RangeTabs({
+  range,
+  onChange,
+  retentionDays,
+}: {
+  range: StatsRange;
+  onChange: (range: StatsRange) => void;
+  retentionDays: number | undefined;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Time range"
+      className="inline-flex shrink-0 rounded-control border border-line bg-subtle p-0.5"
+    >
+      {ANALYTICS_RANGES.map((r) => {
+        const selected = r.value === range;
+        return (
+          <button
+            key={r.value}
+            type="button"
+            aria-pressed={selected}
+            title={r.label}
+            onClick={() => onChange(r.value)}
+            className={cn(
+              "rounded-lg px-3 py-1 text-sm font-medium transition-colors",
+              selected ? "bg-surface text-fg shadow-sm" : "text-fg-muted hover:text-fg",
+            )}
+          >
+            {r.short}
+            {/* WCAG 2.5.3 (label in name): the spoken name must START with the visible text, so the long form is appended, not substituted */}
+            <span className="sr-only"> ({r.label.toLowerCase()}) </span>
+            {isRangeLocked(r.value, retentionDays) && (
+              <span className="ml-1 text-[10px] font-semibold uppercase text-brand-ink">pro</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -131,34 +176,20 @@ export function AnalyticsSection({
 
   return (
     <Card
-      title="Statistics and charts"
+      title="Performance"
       description="Scheduled checks only. A manual Check now never counts here."
+      action={<RangeTabs range={range} onChange={setRange} retentionDays={limits?.retentionDays} />}
     >
-      <div className="mb-6 max-w-xs">
-        <Select
-          label="Range"
-          value={range}
-          onChange={(e) => setRange(e.target.value as StatsRange)}
-        >
-          {ANALYTICS_RANGES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-              {isRangeLocked(r.value, limits?.retentionDays) ? " (PRO)" : ""}
-            </option>
-          ))}
-        </Select>
-      </div>
-
       {locked && limits && <Alert>{planNotice(limits.plan, limits.retentionDays)}</Alert>}
 
       {!locked && analytics.isPending && (
         <div aria-busy="true" className="space-y-6">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {Array.from({ length: 9 }, (_, i) => (
-              <Skeleton key={i} className="h-12" />
+          <Skeleton className="h-56 sm:h-64" />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <Skeleton key={i} className="h-10" />
             ))}
           </div>
-          <Skeleton className="h-56 sm:h-64" />
         </div>
       )}
 
@@ -185,8 +216,11 @@ export function AnalyticsSection({
               analytics.isPlaceholderData && "opacity-60",
             )}
           >
-            <StatGrid data={analytics.data} />
             <Charts data={analytics.data} thresholdMs={thresholdMs} />
+            <section className="border-t border-line pt-6">
+              <h3 className="mb-3 text-sm font-medium">Statistics</h3>
+              <StatGrid data={analytics.data} />
+            </section>
           </div>
         ))}
     </Card>

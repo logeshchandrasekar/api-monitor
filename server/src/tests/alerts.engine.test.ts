@@ -322,13 +322,16 @@ describe("the dispatcher", () => {
     mail.failWith = connectionRefused();
 
     for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt++) {
+      const before = Date.now();
       await runDispatchPass(mail);
+      const after = Date.now();
       const [row] = await logs(m.id);
       expect(row).toMatchObject({ status: "QUEUED", attempts: attempt });
-      // backed off: the next attempt is in the future by about retryDelayMs(attempt)
-      const wait = row!.nextAttemptAt.getTime() - Date.now();
-      expect(wait).toBeGreaterThan(retryDelayMs(attempt) - 5000);
-      expect(wait).toBeLessThanOrEqual(retryDelayMs(attempt));
+      // backed off: the next attempt is exactly retryDelayMs(attempt) after the moment of the failed send.
+      // The bounds are the two clock readings around the pass, so a slow machine cannot make this flaky.
+      const next = row!.nextAttemptAt.getTime();
+      expect(next).toBeGreaterThanOrEqual(before + retryDelayMs(attempt));
+      expect(next).toBeLessThanOrEqual(after + retryDelayMs(attempt));
       expect(await runDispatchPass(mail)).toBe(0); // not due yet: no hammering
       await makeDue();
     }

@@ -4,11 +4,9 @@ import { cn } from "../../utils/cn";
 type Tone = "error" | "info" | "success";
 
 const tones: Record<Tone, string> = {
-  error:
-    "border-red-300 bg-red-50 text-red-900 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200",
-  info: "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200",
-  success:
-    "border-green-300 bg-green-50 text-green-900 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-200",
+  error: "border-down/40 bg-down-soft text-down-ink",
+  info: "border-brand-ink/30 bg-brand-soft text-brand-soft-ink",
+  success: "border-healthy/40 bg-healthy-soft text-healthy-ink",
 };
 
 /** An inline message box, e.g. the server's error above a form. Errors are announced to screen readers immediately. */
@@ -24,7 +22,7 @@ export function Alert({
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={cn("rounded-lg border px-3.5 py-2.5 text-sm", tones[tone], className)}
+      className={cn("rounded-control border px-3.5 py-2.5 text-sm", tones[tone], className)}
     >
       {children}
     </div>

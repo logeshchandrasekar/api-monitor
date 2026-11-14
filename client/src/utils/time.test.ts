@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration, formatInterval, formatMs, formatRelative } from "./time";
+import { formatDuration, formatInterval, formatMs, formatNextCheck, formatRelative } from "./time";
 
 const NOW = new Date("2026-11-03T10:00:00Z").getTime();
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
@@ -43,5 +43,21 @@ describe("formatInterval and formatMs", () => {
     expect(formatMs(null)).toBe("—");
     expect(formatMs(142)).toBe("142 ms");
     expect(formatMs(2350)).toBe("2.35 s");
+  });
+});
+
+describe("formatNextCheck", () => {
+  const now = Date.UTC(2026, 10, 10, 12, 0, 0);
+  it("a normal upcoming check is relative", () => {
+    expect(formatNextCheck(new Date(now + 5 * 60_000).toISOString(), now)).toBe("in 5 min");
+  });
+  it("a check parked years away (the demo monitors) is not 'in 26349 d'", () => {
+    expect(formatNextCheck("2099-01-01T00:00:00.000Z", now)).toBe("Not scheduled");
+  });
+  it("a daily monitor is still shown normally", () => {
+    expect(formatNextCheck(new Date(now + 23 * 3_600_000).toISOString(), now)).toBe("in 23 h");
+  });
+  it("no date is a dash", () => {
+    expect(formatNextCheck(null, now)).toBe("—");
   });
 });

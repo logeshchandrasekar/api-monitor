@@ -101,7 +101,7 @@ export function ResponseTimeChart({
             />
             <Line
               dataKey="avgMs"
-              stroke="var(--brand)"
+              stroke="var(--brand-ink)"
               strokeWidth={2}
               dot={false}
               connectNulls={false}
@@ -112,7 +112,7 @@ export function ResponseTimeChart({
       </div>
       <ChartLegend
         items={[
-          { label: "Average", kind: "line", className: "bg-brand" },
+          { label: "Average", kind: "line", className: "bg-brand-ink" },
           { label: "p95 (95 % were faster)", kind: "dash", className: "border-fg-muted" },
           {
             label: `Slow above ${formatMs(thresholdMs)}`,

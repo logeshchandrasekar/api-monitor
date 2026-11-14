@@ -56,3 +56,61 @@ export function getDisplayStatus(monitor: Pick<Monitor, "status" | "isPaused">):
   if (monitor.isPaused) return "paused";
   return monitor.status.toLowerCase() as Lowercase<MonitorStatus>;
 }
+
+type StatusCounts = {
+  total: number;
+  healthy: number;
+  degraded: number;
+  down: number;
+  pending: number;
+  paused: number;
+};
+
+/** The one-line answer to "is everything fine?" shown in the dashboard banner. `tone` picks the colours. */
+export type OverallStatus = { tone: DisplayStatus; title: string; detail: string };
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** Worst state wins: down, then degraded. "All systems operational" needs at least one healthy monitor and no problems. */
+export function getOverallStatus(c: StatusCounts): OverallStatus {
+  if (c.down > 0) {
+    return {
+      tone: "down",
+      title: `${c.down} ${plural(c.down, "monitor is", "monitors are")} down`,
+      detail:
+        c.degraded > 0
+          ? `${c.degraded} more ${plural(c.degraded, "is", "are")} degraded.`
+          : "Open an incident below for details.",
+    };
+  }
+  if (c.degraded > 0) {
+    return {
+      tone: "degraded",
+      title: `${c.degraded} ${plural(c.degraded, "monitor is", "monitors are")} degraded`,
+      detail: "Still responding, but slower than the threshold.",
+    };
+  }
+  if (c.total > 0 && c.paused === c.total) {
+    return { tone: "paused", title: "All monitors are paused", detail: "No checks are running." };
+  }
+  if (c.healthy === 0) {
+    return {
+      tone: "pending",
+      title: "Waiting for the first checks",
+      detail: "Results appear after the first scheduled check.",
+    };
+  }
+  const extras = [
+    c.paused > 0 ? `${c.paused} paused` : "",
+    c.pending > 0 ? `${c.pending} waiting for a first check` : "",
+  ].filter(Boolean);
+  return {
+    tone: "healthy",
+    title: "All systems operational",
+    detail:
+      [
+        `${c.healthy} of ${c.total} ${plural(c.total, "monitor", "monitors")} healthy`,
+        ...extras,
+      ].join(", ") + ".",
+  };
+}

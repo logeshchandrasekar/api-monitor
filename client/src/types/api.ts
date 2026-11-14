@@ -49,7 +49,15 @@ export type Monitor = {
 export type MonitorHeader = { name: string; value: string | null; sensitive: boolean };
 
 /** Returned by the single-monitor endpoints (adds headers and body). */
-export type MonitorDetail = Monitor & { headers: MonitorHeader[]; body: string | null };
+/**
+ * `recent` (the 24-hour strip) is only sent by GET /api/monitors/:id. The responses of create, update, pause,
+ * resume and duplicate are the same type without it, hence optional.
+ */
+export type MonitorDetail = Monitor & {
+  headers: MonitorHeader[];
+  body: string | null;
+  recent?: Tick[];
+};
 
 export type CheckTrigger = "SCHEDULED" | "MANUAL";
 export type CheckOutcome = "SUCCESS" | "SLOW" | "FAILURE";
@@ -100,6 +108,8 @@ export type DashboardSummary = {
   /** Percent with 2 decimals, or null when there were no scheduled checks in the last 24 h. */
   uptime24h: number | null;
   checks24h: number;
+  /** Average response time of the answered scheduled checks in the last 24 h, or null when there were none. */
+  avgResponseMs24h: number | null;
   activeIncidentCount: number;
   activeIncidents: Incident[];
 };
@@ -112,8 +122,15 @@ export type ApiErrorBody = { error: { code: string; message: string; details?: u
 
 // ---- Phase 6 ------------------------------------------------------------------------------
 
-/** GET /api/monitors adds a 24 h uptime to every item: percent with 2 decimals, null until there is a scheduled check. */
-export type MonitorListItem = Monitor & { uptime24h: number | null };
+/** One cell of the 24-hour strip: the worst thing that happened in that UTC hour ("none" = no scheduled check). */
+export type Tick = "up" | "slow" | "down" | "none";
+
+/**
+ * GET /api/monitors adds two things to every item:
+ * - uptime24h: percent with 2 decimals, null until there is a scheduled check.
+ * - recent: exactly 24 ticks, one per hour, oldest first; the last one is the hour still in progress.
+ */
+export type MonitorListItem = Monitor & { uptime24h: number | null; recent: Tick[] };
 
 /** GET /api/users/me/limits: what the plan allows and how much of it is used. */
 export type PlanLimits = {

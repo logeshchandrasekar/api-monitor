@@ -89,7 +89,7 @@ export function LoginPage() {
         <Link
           to="/register"
           state={location.state}
-          className="font-medium text-brand hover:underline"
+          className="font-medium text-brand-ink hover:underline"
         >
           Create an account
         </Link>

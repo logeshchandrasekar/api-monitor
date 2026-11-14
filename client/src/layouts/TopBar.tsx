@@ -10,7 +10,7 @@ export function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         type="button"
         onClick={onOpenMenu}
         aria-label="Open navigation"
-        className="-ml-2 rounded-lg p-2 text-fg-muted hover:bg-subtle hover:text-fg lg:hidden"
+        className="-ml-2 rounded-control p-2 text-fg-muted hover:bg-subtle hover:text-fg lg:hidden"
       >
         <Menu className="size-5" aria-hidden="true" />
       </button>

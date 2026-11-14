@@ -53,3 +53,21 @@ export function formatMs(ms: number | null): string {
   if (ms === null) return "—";
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
 }
+
+/**
+ * When the next check is due, as text. The scheduler never runs the demo monitors (their next check is parked
+ * in the year 2099), and a real monitor is never more than one interval (max 24 h) away, so anything further
+ * than two days is "Not scheduled" instead of "in 26349 d".
+ */
+export function formatNextCheck(iso: string | null, now: number = Date.now()): string {
+  if (!iso) return "—";
+  if (new Date(iso).getTime() - now > 2 * DAY) return "Not scheduled";
+  return formatRelative(iso, now);
+}
+
+const hourOfDay = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+
+/** The hour a tick covers, in the viewer's time zone: "2:00 PM – 3:00 PM". */
+export function formatHourRange(startMs: number): string {
+  return `${hourOfDay.format(new Date(startMs))} – ${hourOfDay.format(new Date(startMs + HOUR))}`;
+}

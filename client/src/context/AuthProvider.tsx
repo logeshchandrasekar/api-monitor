@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { ApiError, setUnauthorizedHandler } from "../services/api";
 import { authApi, type LoginInput, type RegisterInput } from "../services/authApi";
 import { queryKeys } from "../services/queryKeys";
+import { setSessionHint } from "../utils/sessionHint";
 import type { User } from "../types/api";
 import {
   AuthContext,
@@ -29,9 +30,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: queryKeys.me,
     queryFn: async (): Promise<User | null> => {
       try {
-        return (await authApi.me()).user;
+        const { user } = await authApi.me();
+        setSessionHint(true);
+        return user;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) return null; // "not logged in" is an answer, not an error
+        if (error instanceof ApiError && error.status === 401) {
+          setSessionHint(false);
+          return null; // "not logged in" is an answer, not an error
+        }
         throw error;
       }
     },
@@ -42,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (user: User) => {
       dropUserData(queryClient);
       queryClient.setQueryData(queryKeys.me, user);
+      setSessionHint(true);
       setEndedReason(null);
     },
     [queryClient],
@@ -50,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const endSession = useCallback(
     (reason: SessionEndReason) => {
       setEndedReason(reason);
+      setSessionHint(false);
       queryClient.setQueryData(queryKeys.me, null); // the route guards redirect to /login on this render
       dropUserData(queryClient);
     },

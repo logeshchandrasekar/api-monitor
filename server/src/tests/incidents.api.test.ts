@@ -276,6 +276,7 @@ describe("GET /api/dashboard/summary", () => {
       monitors: { total: 0, healthy: 0, degraded: 0, down: 0, pending: 0, paused: 0 },
       uptime24h: null,
       checks24h: 0,
+      avgResponseMs24h: null,
       activeIncidentCount: 0,
       activeIncidents: [],
     });

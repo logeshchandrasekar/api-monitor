@@ -10,7 +10,7 @@ import {
   resumeMonitor,
   updateMonitor,
 } from "../services/monitors.js";
-import { uptime24hFor } from "../services/stats.js";
+import { recentTicksFor, uptime24hFor } from "../services/stats.js";
 import { serializeMonitor } from "../utils/serializers.js";
 import { validated } from "../utils/validated.js";
 
@@ -21,11 +21,14 @@ export const list: RequestHandler = async (req, res) => {
     req.user!.id,
     validated<ListMonitorsQuery>(res, "query"),
   );
-  const uptime = await uptime24hFor(items.map((m) => m.id)); // one grouped query for the whole page
+  const ids = items.map((m) => m.id);
+  // One grouped query each for the whole page: the 24 h uptime and the 24-tick strip
+  const [uptime, ticks] = await Promise.all([uptime24hFor(ids), recentTicksFor(ids)]);
   res.json({
     items: items.map((m) => ({
       ...serializeMonitor(m, { detail: false }),
       uptime24h: uptime.get(m.id) ?? null,
+      recent: ticks.get(m.id) ?? [],
     })),
     nextCursor,
   });
@@ -38,7 +41,10 @@ export const create: RequestHandler = async (req, res) => {
 
 export const get: RequestHandler = async (req, res) => {
   const monitor = await getMonitor(req.user!.id, idOf(res));
-  res.json({ monitor: serializeMonitor(monitor, { detail: true }) });
+  // The detail page header shows the same 24-hour strip as the list. Only this read route adds it:
+  // create, update, pause, resume and duplicate keep returning the plain monitor.
+  const recent = (await recentTicksFor([monitor.id])).get(monitor.id) ?? [];
+  res.json({ monitor: { ...serializeMonitor(monitor, { detail: true }), recent } });
 };
 
 export const update: RequestHandler = async (req, res) => {

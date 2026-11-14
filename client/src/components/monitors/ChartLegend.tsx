@@ -4,7 +4,7 @@ export type LegendItem = {
   label: string;
   /** line = solid line, dash = dashed line, box = a shaded area */
   kind: "line" | "dash" | "box";
-  /** Tailwind classes that set the colour, e.g. "bg-brand" or "border-degraded". */
+  /** Tailwind classes that set the colour, e.g. "bg-brand-ink" or "border-degraded". */
   className: string;
 };
 

@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import ComponentGalleryPage from "./pages/dev/ComponentGalleryPage";
 import { IncidentDetailPage } from "./pages/IncidentDetailPage";
 import { IncidentsPage } from "./pages/IncidentsPage";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MonitorDetailPage } from "./pages/MonitorDetailPage";
 import { MonitorEditPage } from "./pages/MonitorEditPage";
@@ -36,8 +37,11 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* Logged-in only */}
-        <Route element={<ProtectedRoute />}>
+        {/* The landing page for everybody, signed in or not (at "/" only visitors who are not logged in see it) */}
+        <Route path="welcome" element={<LandingPage />} />
+
+        {/* Logged-in only. At "/" a visitor who is simply not logged in sees the landing page instead. */}
+        <Route element={<ProtectedRoute publicHome={<LandingPage />} />}>
           <Route element={<AppLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="monitors" element={<MonitorsPage />} />

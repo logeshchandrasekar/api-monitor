@@ -120,7 +120,7 @@ export function HeadersEditor({ rows, errors, onChange }: Props) {
         );
       })}
 
-      {errors.headers && <p className="text-sm text-red-600 dark:text-red-400">{errors.headers}</p>}
+      {errors.headers && <p className="text-sm text-down-ink">{errors.headers}</p>}
 
       <div className="flex flex-wrap gap-2">
         <Button

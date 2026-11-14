@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import type { StatsQuery } from "../schemas/check.js";
+import { TICK_COUNT, TICK_MS, buildTicks, type Tick, type TickRow } from "../utils/ticks.js";
 import { uptimeOf } from "../utils/uptime.js";
 import { RANGE_MS, assertRangeAllowed } from "./checks.js";
 import { getMonitor, type Owner } from "./monitors.js";
@@ -32,6 +33,43 @@ export async function uptime24hFor(monitorIds: string[]): Promise<Map<string, nu
     const t = totals.get(id);
     out.set(id, t ? uptimeOf(t.up, t.total) : null);
   }
+  return out;
+}
+
+/**
+ * The 24-hour tick strip for many monitors in ONE query (Phase 8.5): per monitor and hour, how many scheduled
+ * checks succeeded, were slow or failed. Hours are UTC clock hours (date_bin from the epoch, like the analytics
+ * buckets), so the last tick is the current, still-filling hour. Manual checks are ignored (ENG-4).
+ * `nowMs` is a parameter so tests can pin the clock.
+ */
+export async function recentTicksFor(
+  monitorIds: string[],
+  nowMs: number = Date.now(),
+): Promise<Map<string, Tick[]>> {
+  const out = new Map<string, Tick[]>();
+  if (monitorIds.length === 0) return out;
+
+  const firstHourMs = Math.floor(nowMs / TICK_MS) * TICK_MS - (TICK_COUNT - 1) * TICK_MS;
+  const rows = await prisma.$queryRaw<(TickRow & { monitorId: string })[]>`
+    SELECT
+      "monitorId",
+      (extract(epoch FROM date_bin(interval '1 hour', "checkedAt", TIMESTAMPTZ '1970-01-01 00:00:00+00')) * 1000)::float8 AS "atMs",
+      (count(*) FILTER (WHERE outcome = 'SUCCESS'))::int AS "ok",
+      (count(*) FILTER (WHERE outcome = 'SLOW'))::int AS "slow",
+      (count(*) FILTER (WHERE outcome = 'FAILURE'))::int AS "failed"
+    FROM checks
+    WHERE "monitorId" = ANY(${monitorIds}::text[])
+      AND trigger = 'SCHEDULED'
+      AND "checkedAt" >= ${new Date(firstHourMs).toISOString()}::timestamptz
+    GROUP BY "monitorId", 2`;
+
+  const byMonitor = new Map<string, TickRow[]>();
+  for (const { monitorId, ...row } of rows) {
+    const list = byMonitor.get(monitorId) ?? [];
+    list.push(row);
+    byMonitor.set(monitorId, list);
+  }
+  for (const id of monitorIds) out.set(id, buildTicks(byMonitor.get(id) ?? [], nowMs));
   return out;
 }
 

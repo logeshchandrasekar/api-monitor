@@ -1,9 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { useCurrentUser, useAuth } from "../hooks/useAuth";
+import { useDismiss } from "../hooks/useDismiss";
 import { getErrorMessage } from "../utils/errors";
 
 function initials(name: string): string {
@@ -24,22 +25,8 @@ export function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Close on outside click and on Escape
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(open, ref, close); // closes on an outside click and on Escape
 
   const logoutMutation = useMutation({
     mutationFn: logout,
@@ -53,7 +40,7 @@ export function ProfileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-lg p-1.5 pr-2 hover:bg-subtle"
+        className="flex items-center gap-2 rounded-control p-1.5 pr-2 transition-colors hover:bg-subtle"
       >
         <span className="grid size-8 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-fg">
           {initials(user.name)}
@@ -65,7 +52,7 @@ export function ProfileMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-56 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
+          className="animate-rise absolute right-0 mt-2 w-56 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
         >
           <div className="border-b border-line px-3 py-2">
             <p className="truncate text-sm font-medium">{user.name}</p>
@@ -75,7 +62,7 @@ export function ProfileMenu() {
             role="menuitem"
             to="/settings"
             onClick={() => setOpen(false)}
-            className="mt-1.5 flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-subtle"
+            className="mt-1.5 flex items-center gap-2 rounded-control px-3 py-2 text-sm hover:bg-subtle"
           >
             <Settings className="size-4 text-fg-muted" aria-hidden="true" />
             Settings
@@ -85,7 +72,7 @@ export function ProfileMenu() {
             type="button"
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-subtle disabled:opacity-60"
+            className="flex w-full items-center gap-2 rounded-control px-3 py-2 text-sm hover:bg-subtle disabled:opacity-60"
           >
             <LogOut className="size-4 text-fg-muted" aria-hidden="true" />
             {logoutMutation.isPending ? "Logging out..." : "Log out"}

@@ -10,7 +10,7 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setPreference(next)}
       aria-label={`Switch to ${next} theme`}
-      className="rounded-lg p-2 text-fg-muted hover:bg-subtle hover:text-fg"
+      className="rounded-control p-2 text-fg-muted transition-colors hover:bg-subtle hover:text-fg"
     >
       {resolved === "dark" ? (
         <Sun className="size-5" aria-hidden="true" />

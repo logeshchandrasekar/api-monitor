@@ -101,7 +101,11 @@ export function RegisterPage() {
 
       <p className="mt-5 text-center text-sm text-fg-muted">
         Already have an account?{" "}
-        <Link to="/login" state={location.state} className="font-medium text-brand hover:underline">
+        <Link
+          to="/login"
+          state={location.state}
+          className="font-medium text-brand-ink hover:underline"
+        >
           Sign in
         </Link>
       </p>

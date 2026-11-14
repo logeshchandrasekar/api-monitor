@@ -11,7 +11,7 @@ export function NotFoundPage() {
         <p className="mt-1 text-sm text-fg-muted">That address does not exist, or it moved.</p>
         <Link
           to="/"
-          className="mt-6 inline-flex h-10 items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+          className="mt-6 inline-flex h-10 items-center rounded-control bg-brand px-4 text-sm font-medium text-brand-fg hover:bg-brand-hover"
         >
           Go to the dashboard
         </Link>

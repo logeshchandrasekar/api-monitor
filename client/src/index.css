@@ -3,17 +3,29 @@
 /* Class-based dark mode: <html class="dark">. Set by the inline script in index.html and by ThemeProvider. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Phase 8.5 palette: Cobalt blue accent on Ink (zinc) neutrals. Status colours keep their meaning and are the
+ * only loud colours in the app. Contrast was checked against WCAG AA (4.5:1 text, 3:1 graphics).
+ *   --brand       fills (buttons, the logo mark): white text on it passes AA in both themes
+ *   --brand-ink   brand-coloured TEXT and thin lines (links, active nav, chart line): lighter in dark mode
+ *   --brand-soft  quiet brand backgrounds (active nav item, info alert)
+ */
 :root {
-  --canvas: #f8fafc; /* page background */
+  --canvas: #fafafa; /* page background */
   --surface: #ffffff; /* cards, sidebar, dialogs */
-  --subtle: #f1f5f9; /* hover fills, skeletons, table stripes */
-  --line: #e2e8f0; /* borders */
-  --fg: #0f172a;
-  --fg-muted: #64748b;
-  --brand: #4f46e5;
-  --brand-hover: #4338ca;
+  --subtle: #f4f4f5; /* hover fills, skeletons, table stripes */
+  --line: #e4e4e7; /* borders */
+  --fg: #18181b;
+  --fg-muted: #6c6c75; /* a touch darker than zinc-500 so it still passes AA on --subtle */
+  --brand: #2563eb;
+  --brand-hover: #1d4ed8;
   --brand-fg: #ffffff;
-  --focus: #6366f1;
+  --brand-ink: #2563eb;
+  --brand-soft: #eff6ff;
+  --brand-soft-ink: #1e40af;
+  --focus: #2563eb;
+  --danger: #dc2626; /* destructive button fill (white text passes AA) */
+  --danger-hover: #b91c1c;
 
   /* Status colours: solid dot, soft badge background, readable ink (UX-1: five states) */
   --healthy: #16a34a;
@@ -25,25 +37,30 @@
   --down: #dc2626;
   --down-soft: #fee2e2;
   --down-ink: #991b1b;
-  --paused: #64748b;
-  --paused-soft: #e2e8f0;
-  --paused-ink: #334155;
-  --pending: #0284c7;
-  --pending-soft: #e0f2fe;
-  --pending-ink: #075985;
+  --paused: #71717a;
+  --paused-soft: #e4e4e7;
+  --paused-ink: #3f3f46;
+  --pending: #7c3aed;
+  --pending-soft: #ede9fe;
+  --pending-ink: #5b21b6;
 }
 
 .dark {
-  --canvas: #0b1120;
-  --surface: #111a2e;
-  --subtle: #18233a;
-  --line: #243049;
-  --fg: #e5e7eb;
-  --fg-muted: #94a3b8;
-  --brand: #6366f1;
-  --brand-hover: #818cf8;
+  --canvas: #09090b;
+  --surface: #141416;
+  --subtle: #1c1c1f;
+  --line: #27272a;
+  --fg: #fafafa;
+  --fg-muted: #a1a1aa;
+  --brand: #2563eb; /* NOT #3b82f6: white text on that is only 3.7:1 */
+  --brand-hover: #1d4ed8;
   --brand-fg: #ffffff;
-  --focus: #818cf8;
+  --brand-ink: #60a5fa;
+  --brand-soft: #3b82f61f;
+  --brand-soft-ink: #93c5fd;
+  --focus: #3b82f6;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
 
   --healthy: #4ade80;
   --healthy-soft: #4ade8026;
@@ -54,12 +71,12 @@
   --down: #f87171;
   --down-soft: #f8717126;
   --down-ink: #fca5a5;
-  --paused: #94a3b8;
-  --paused-soft: #94a3b826;
-  --paused-ink: #cbd5e1;
-  --pending: #38bdf8;
-  --pending-soft: #38bdf826;
-  --pending-ink: #7dd3fc;
+  --paused: #a1a1aa;
+  --paused-soft: #a1a1aa26;
+  --paused-ink: #d4d4d8;
+  --pending: #a78bfa;
+  --pending-soft: #a78bfa26;
+  --pending-ink: #c4b5fd;
 }
 
 /* Expose the tokens as Tailwind colours: bg-surface, text-fg-muted, border-line, bg-healthy-soft, ... */
@@ -73,6 +90,11 @@
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
   --color-brand-fg: var(--brand-fg);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-ink: var(--brand-soft-ink);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
 
   --color-healthy: var(--healthy);
   --color-healthy-soft: var(--healthy-soft);
@@ -91,6 +113,25 @@
   --color-pending-ink: var(--pending-ink);
 }
 
+/*
+ * Type and shape (not theme-dependent, so no `inline`).
+ * Geist for text, Geist Mono for data (URLs, response times, status codes, timestamps).
+ * `text-hero` is the landing page headline; the other sizes keep Tailwind's scale.
+ */
+@theme {
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-hero: 3.25rem;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.035em;
+
+  --radius-control: 0.625rem; /* buttons, inputs, menu items: 10 px */
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @layer base {
   html {
     color-scheme: light; /* native scrollbars, form controls and dialogs follow the theme */
@@ -101,7 +142,15 @@
   body {
     background-color: var(--canvas);
     color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings:
+      "cv11", "ss01"; /* Geist: single-storey a and open digits read better in dense UI */
     -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
   }
   /* Tailwind v4 borders default to currentColor; make a bare `border` use the theme line colour */
   *,
@@ -112,5 +161,38 @@
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
+  }
+}
+
+/* Data text: monospace with equal-width digits, so columns of numbers line up */
+@utility data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Quiet entrance for cards and banners. Skipped for people who ask their OS for less motion. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@utility animate-rise {
+  animation: rise-in 280ms var(--ease-out-quint) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

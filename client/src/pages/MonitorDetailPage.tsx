@@ -10,7 +10,7 @@ import { AlertSettings } from "../components/monitors/AlertSettings";
 import { AnalyticsSection } from "../components/monitors/AnalyticsSection";
 import { NotificationHistory } from "../components/monitors/NotificationHistory";
 import { StatusBadge } from "../components/StatusBadge";
-import { ButtonLink } from "../components/ui/ButtonLink";
+import { TickStrip } from "../components/TickStrip";
 import { Card } from "../components/ui/Card";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useMonitor, useMonitorStats } from "../hooks/useMonitors";
@@ -18,13 +18,30 @@ import { useNow } from "../hooks/useNow";
 import { ApiError } from "../services/api";
 import { formatPercent } from "../utils/format";
 import { getDisplayStatus } from "../utils/status";
-import { formatDateTime, formatInterval, formatMs, formatRelative } from "../utils/time";
+import {
+  formatDateTime,
+  formatInterval,
+  formatMs,
+  formatNextCheck,
+  formatRelative,
+} from "../utils/time";
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
+/** One of the three big numbers in the header. */
+function Key({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-fg-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium">{children}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-fg-muted">{label}</dt>
+      <dd className="data mt-1 text-3xl font-semibold">{children}</dd>
+    </div>
+  );
+}
+
+/** A small label and value on one line, for the details that matter less. */
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-1.5">
+      <dt className="text-fg-muted">{label}</dt>
+      <dd className="data font-medium">{children}</dd>
     </div>
   );
 }
@@ -80,13 +97,13 @@ export function MonitorDetailPage() {
               <h1 className="text-2xl font-semibold tracking-tight">{m.name}</h1>
               <StatusBadge status={display} />
             </div>
-            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-fg-muted">
+            <p className="data mt-1.5 flex min-w-0 items-center gap-2 text-sm text-fg-muted">
               <span className="font-medium">{m.method}</span>
               <a
                 href={m.url}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex min-w-0 items-center gap-1 hover:underline"
+                className="inline-flex min-w-0 items-center gap-1 hover:text-fg hover:underline"
               >
                 <span className="truncate">{m.url}</span>
                 <ExternalLink className="size-3.5 shrink-0" aria-label="opens in a new tab" />
@@ -107,34 +124,51 @@ export function MonitorDetailPage() {
             Waiting for first check. Use Check now to try the endpoint straight away.
           </p>
         ) : (
-          <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
-            <Fact label="Response time">{formatMs(m.lastResponseTimeMs)}</Fact>
-            <Fact label="Last status code">{m.lastStatusCode ?? "—"}</Fact>
-            <Fact label="Uptime 24 h">{formatPercent(uptime.data?.uptimePct ?? null)}</Fact>
-            <Fact label="Last checked">
-              <span title={formatDateTime(m.lastCheckedAt)}>
-                {formatRelative(m.lastCheckedAt, now)}
-              </span>
-            </Fact>
-            <Fact label="Next check">
-              {m.isPaused ? "Paused" : formatRelative(m.nextCheckAt, now)}
-            </Fact>
-            <Fact label="Interval">{formatInterval(m.intervalSec)}</Fact>
-          </dl>
+          <>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-10">
+              <dl className="flex flex-wrap gap-x-10 gap-y-4">
+                <Key label="Response time">{formatMs(m.lastResponseTimeMs)}</Key>
+                <Key label="Uptime (24 h)">{formatPercent(uptime.data?.uptimePct ?? null)}</Key>
+                <Key label="Status code">{m.lastStatusCode ?? "—"}</Key>
+              </dl>
+              {m.recent && (
+                <div className="min-w-0">
+                  <TickStrip ticks={m.recent} now={now} className="h-9" />
+                  <div
+                    aria-hidden="true"
+                    className="mt-1 flex justify-between text-[11px] text-fg-muted"
+                  >
+                    <span>24 h ago</span>
+                    <span>now</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-4 text-xs">
+              <Fact label="Last checked">
+                <span title={formatDateTime(m.lastCheckedAt)}>
+                  {formatRelative(m.lastCheckedAt, now)}
+                </span>
+              </Fact>
+              <Fact label="Next check">
+                {m.isPaused ? "Paused" : formatNextCheck(m.nextCheckAt, now)}
+              </Fact>
+              <Fact label="Every">{formatInterval(m.intervalSec)}</Fact>
+              <Fact label="Timeout">{formatMs(m.timeoutMs)}</Fact>
+              <Fact label="Slow above">{formatMs(m.responseThresholdMs)}</Fact>
+            </dl>
+          </>
         )}
       </Card>
 
+      {/* Charts first. The rarely used panels (alerts, notifications) go last. */}
       <div className="space-y-6">
         <AnalyticsSection monitorId={m.id} thresholdMs={m.responseThresholdMs} />
         <IncidentHistory monitorId={m.id} now={now} />
+        <ChecksTable monitorId={m.id} now={now} />
         <AlertSettings monitorId={m.id} />
         <NotificationHistory monitorId={m.id} now={now} />
-        <ChecksTable monitorId={m.id} now={now} />
-        <div className="flex justify-end">
-          <ButtonLink to={`/monitors/${m.id}/edit`} variant="ghost" size="sm">
-            Edit settings
-          </ButtonLink>
-        </div>
       </div>
     </>
   );

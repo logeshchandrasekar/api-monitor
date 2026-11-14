@@ -24,15 +24,16 @@ export function Textarea({ label, error, hint, action, className, ...rest }: Tex
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         className={cn(
-          "w-full rounded-lg border bg-surface px-3 py-2 text-sm placeholder:text-fg-muted",
+          "w-full rounded-control border bg-surface px-3 py-2 text-sm placeholder:text-fg-muted",
+          "transition-colors hover:border-fg-muted/50",
           "disabled:cursor-not-allowed disabled:opacity-60",
-          error ? "border-red-500" : "border-line",
+          error ? "border-down" : "border-line",
           className,
         )}
         {...rest}
       />
       {error ? (
-        <p id={`${id}-error`} className="mt-1.5 text-sm text-red-600 dark:text-red-400">
+        <p id={`${id}-error`} className="mt-1.5 text-sm text-down-ink">
           {error}
         </p>
       ) : hint ? (

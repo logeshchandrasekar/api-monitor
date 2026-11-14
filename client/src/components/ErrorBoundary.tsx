@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-6 h-10 rounded-lg bg-brand px-4 text-sm font-medium text-brand-fg hover:bg-brand-hover"
+            className="mt-6 h-10 rounded-control bg-brand px-4 text-sm font-medium text-brand-fg hover:bg-brand-hover"
           >
             Reload the page
           </button>

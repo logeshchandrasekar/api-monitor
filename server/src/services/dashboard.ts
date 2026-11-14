@@ -6,7 +6,7 @@ const DAY_MS = 86_400_000;
 export async function getDashboardSummary(userId: string) {
   const since = new Date(Date.now() - DAY_MS);
 
-  const [byStatus, outcomes, activeIncidentCount, activeIncidents] = await Promise.all([
+  const [byStatus, outcomes, activeIncidentCount, activeIncidents, avg] = await Promise.all([
     prisma.monitor.groupBy({
       by: ["status", "isPaused"],
       where: { userId },
@@ -24,6 +24,16 @@ export async function getDashboardSummary(userId: string) {
       include: incidentInclude,
       orderBy: [{ startedAt: "desc" }, { id: "desc" }],
       take: 10,
+    }),
+    // Average response time of the scheduled checks that got an answer (a failure has no useful timing)
+    prisma.check.aggregate({
+      where: {
+        trigger: "SCHEDULED",
+        outcome: { in: ["SUCCESS", "SLOW"] },
+        checkedAt: { gte: since },
+        monitor: { userId },
+      },
+      _avg: { responseTimeMs: true },
     }),
   ]);
 
@@ -47,6 +57,7 @@ export async function getDashboardSummary(userId: string) {
     monitors,
     uptime24h: total === 0 ? null : Math.round((up / total) * 10_000) / 100, // percent, 2 decimals
     checks24h: total,
+    avgResponseMs24h: avg._avg.responseTimeMs === null ? null : Math.round(avg._avg.responseTimeMs),
     activeIncidentCount,
     activeIncidents,
   };
