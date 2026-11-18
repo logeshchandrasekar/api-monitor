@@ -17,6 +17,8 @@ export type AuthContextValue = {
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  /** Deletes the account (after re-entering the password), then ends the session like a logout. */
+  deleteAccount: (password: string) => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

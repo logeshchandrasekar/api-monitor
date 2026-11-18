@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import { AppError } from "../utils/errors.js";
 
-const BODY_METHODS = new Set(["POST", "PUT", "PATCH"]);
+const BODY_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /** CSRF defence (SEC-3): a request that carries a body must be JSON. Body-less POSTs are fine. */
 export const requireJson: RequestHandler = (req, _res, next) => {

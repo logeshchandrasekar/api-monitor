@@ -19,6 +19,11 @@ export const loginSchema = z.object({
 
 export const updateMeSchema = z.object({ name });
 
+// Deleting the account asks for the password again, like changing it does
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, "Enter your password to confirm").max(128),
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required").max(128),
   newPassword,
