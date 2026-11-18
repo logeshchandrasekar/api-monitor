@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "seed:demo": "tsx src/seed/run.ts",
+    "retention:run": "tsx src/jobs/retentionCli.ts",
+    "security:logscan": "node scripts/logscan.mjs",
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
@@ -15,7 +17,8 @@
     "checkpoint:2": "node scripts/checkpoint2.mjs",
     "checkpoint:3": "node scripts/checkpoint3.mjs",
     "checkpoint:4": "node scripts/checkpoint4.mjs",
-    "checkpoint:8": "node scripts/checkpoint8.mjs"
+    "checkpoint:8": "node scripts/checkpoint8.mjs",
+    "checkpoint:9a": "node --import tsx scripts/checkpoint9a.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",

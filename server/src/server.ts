@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { startDispatcher } from "./jobs/notificationDispatcher.js";
+import { startRetention } from "./jobs/retention.js";
 import { startScheduler } from "./jobs/scheduler.js";
 import { logger } from "./lib/logger.js";
 import { prisma } from "./lib/prisma.js";
@@ -20,6 +21,10 @@ if (!scheduler) logger.info("Scheduler disabled (ENABLE_SCHEDULER=false)");
 const dispatcher = env.ENABLE_DISPATCHER ? startDispatcher() : null;
 if (!dispatcher) logger.info("Alert dispatcher disabled (ENABLE_DISPATCHER=false)");
 
+// Deletes checks older than the plan's retention, once shortly after boot and then daily (Phase 9, DAT-3).
+const retention = env.ENABLE_RETENTION ? startRetention() : null;
+if (!retention) logger.info("Retention job disabled (ENABLE_RETENTION=false)");
+
 let shuttingDown = false;
 async function shutdown(signal: string) {
   if (shuttingDown) return;
@@ -29,6 +34,7 @@ async function shutdown(signal: string) {
 
   await scheduler?.stop(10_000); // stop ticking, give in-flight checks up to 10 s to finish and be stored
   await dispatcher?.stop(10_000); // after the scheduler: it can still queue an alert while its last checks finish
+  await retention?.stop(); // lets a run that is already deleting finish its current batch
   server.closeIdleConnections();
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await prisma.$disconnect();

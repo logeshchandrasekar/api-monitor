@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { DeleteAccountDialog } from "../components/DeleteAccountDialog";
 import { PageHeader } from "../components/PageHeader";
 import { Alert } from "../components/ui/Alert";
 import { Button } from "../components/ui/Button";
@@ -198,6 +199,28 @@ function AppearanceCard() {
   );
 }
 
+function DeleteAccountCard() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card
+      title="Delete account"
+      description="Permanently remove your account and everything in it."
+      className="border-down/40"
+    >
+      <p className="max-w-prose text-sm text-fg-muted">
+        This deletes all of your monitors, their check history, incidents and alert settings. There
+        is no way to get them back.
+      </p>
+      <div className="mt-4">
+        <Button variant="danger" onClick={() => setOpen(true)}>
+          Delete account
+        </Button>
+      </div>
+      <DeleteAccountDialog open={open} onClose={() => setOpen(false)} />
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   useDocumentTitle("Settings");
   return (
@@ -207,6 +230,7 @@ export function SettingsPage() {
         <ProfileCard />
         <PasswordCard />
         <AppearanceCard />
+        <DeleteAccountCard />
       </div>
     </>
   );

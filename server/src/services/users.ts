@@ -1,4 +1,5 @@
 import { PLAN_LIMITS, allowedIntervals, type PlanName } from "../config/plans.js";
+import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
 import { hashPassword, publicUserSelect, verifyPassword } from "./auth.js";
@@ -22,6 +23,28 @@ export async function changePassword(userId: string, currentPassword: string, ne
     where: { id: userId },
     data: { passwordHash: await hashPassword(newPassword) },
   });
+}
+
+/**
+ * Permanently deletes the account (Phase 9). The password is checked again first. One DELETE on the
+ * user row removes everything it owns through ON DELETE CASCADE: monitors, and through them checks,
+ * incidents, alert rules and notification logs. Nothing about the person is logged except the id.
+ */
+export async function deleteAccount(userId: string, password: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true },
+  });
+  if (!user) throw new AppError(401, "UNAUTHORIZED", "Please log in to continue.");
+
+  // 400, not 401: a 401 makes the frontend think the session expired and log out
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    throw new AppError(400, "INVALID_PASSWORD", "That password is not correct.");
+  }
+
+  const monitors = await prisma.monitor.count({ where: { userId } });
+  await prisma.user.delete({ where: { id: userId } });
+  logger.info({ userId, monitors }, "account deleted");
 }
 
 /** What this plan allows, straight from config/plans.ts, so the client never hard-codes the plan table. */

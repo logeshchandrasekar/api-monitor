@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { ApiError, setUnauthorizedHandler } from "../services/api";
 import { authApi, type LoginInput, type RegisterInput } from "../services/authApi";
 import { queryKeys } from "../services/queryKeys";
+import { usersApi } from "../services/userApi";
 import { setSessionHint } from "../utils/sessionHint";
 import type { User } from "../types/api";
 import {
@@ -97,6 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     endSession("logout");
   }, [endSession]);
 
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await usersApi.deleteAccount(password); // throws on a wrong password: the session stays as it is
+      endSession("logout"); // the server already cleared the cookie; this clears the cached data and the hint
+    },
+    [endSession],
+  );
+
   const { data, isPending, isError, isFetching, refetch } = meQuery;
   const user = data ?? null;
   // A failed background re-check while we still hold a user does not log anyone out
@@ -110,8 +119,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const retry = useCallback(() => void refetch(), [refetch]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user, endedReason, retry, retrying: isFetching, login, register, logout }),
-    [status, user, endedReason, retry, isFetching, login, register, logout],
+    () => ({
+      status,
+      user,
+      endedReason,
+      retry,
+      retrying: isFetching,
+      login,
+      register,
+      logout,
+      deleteAccount,
+    }),
+    [status, user, endedReason, retry, isFetching, login, register, logout, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

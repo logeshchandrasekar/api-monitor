@@ -49,6 +49,27 @@ export async function runTick(run?: CheckRunner): Promise<number> {
   return monitors.length;
 }
 
+/**
+ * One scheduler tick, drained: keeps claiming batches of CLAIM_LIMIT while monitors are still due, up to
+ * `maxBatches` (SCHEDULER_MAX_BATCHES). A short batch means nothing else is due, so the loop ends.
+ * Without this, 200 monitors at a 30 s interval need ~100 checks per 15 s tick but a tick only took 50,
+ * so the scheduler fell further behind every minute. maxBatches = 1 is exactly the old behavior.
+ */
+export async function runTickDrain(
+  run?: CheckRunner,
+  opts: { maxBatches?: number; shouldStop?: () => boolean } = {},
+): Promise<number> {
+  const maxBatches = opts.maxBatches ?? env.SCHEDULER_MAX_BATCHES;
+  let total = 0;
+  for (let batch = 0; batch < maxBatches; batch++) {
+    if (batch > 0 && opts.shouldStop?.()) break; // shutting down: finish the batch in hand, claim no more
+    const claimed = await runTick(run);
+    total += claimed;
+    if (claimed < CLAIM_LIMIT) break;
+  }
+  return total;
+}
+
 export type SchedulerHandle = { stop: (waitMs?: number) => Promise<void> };
 
 export function startScheduler(opts: { tickMs?: number; run?: CheckRunner } = {}): SchedulerHandle {
@@ -58,7 +79,7 @@ export function startScheduler(opts: { tickMs?: number; run?: CheckRunner } = {}
 
   const tick = () => {
     if (stopped || current) return; // never overlap: a long tick simply delays the next one
-    current = runTick(opts.run)
+    current = runTickDrain(opts.run, { shouldStop: () => stopped })
       .then((n) => {
         if (n > 0) logger.debug({ claimed: n }, "scheduler tick");
       })
