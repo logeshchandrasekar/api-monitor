@@ -23,7 +23,16 @@ const run = (title, command, cwd = repo, env = {}) => {
 };
 
 try {
-  run("Fresh clone of the committed code", `git clone --quiet "${source}" "${repo}"`, source);
+  const branch = execSync("git branch --show-current", {
+    cwd: source,
+    encoding: "utf8",
+  }).trim();
+
+  run(
+    "Fresh clone of the committed code",
+    `git clone --quiet --branch "${branch}" "${source}" "${repo}"`,
+    source,
+  );
   run("Install exactly what the lockfile says", "npm ci");
   run("Generate the Prisma client", "npx prisma generate", join(repo, "server"), {
     DATABASE_URL: `postgresql://apimonitor:apimonitor@localhost:${port}/api_monitor_test?schema=public`,
