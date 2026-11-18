@@ -36,6 +36,22 @@ function normalizeHost(hostname: string): string {
     .replace(/\.$/, "");
 }
 
+/**
+ * IPv6 ranges the ipaddr.js "unicast" test lets through but that no public service lives in.
+ * Added in the Phase 9 SSRF review.
+ */
+const EXTRA_BLOCKED_V6: readonly (readonly [string, number])[] = [
+  ["::", 8], // reserved block that holds ::2, IPv4-compatible forms and other leftovers
+  ["100::", 64], // discard-only prefix (RFC 6666)
+  ["64:ff9b:1::", 48], // local-use NAT64 (RFC 8215)
+  ["fec0::", 10], // deprecated site-local
+  ["2001:2::", 48], // benchmarking (RFC 5180)
+  ["2001:10::", 28], // ORCHID (deprecated)
+  ["2001:20::", 28], // ORCHIDv2
+  ["3fff::", 20], // documentation (RFC 9637)
+  ["5f00::", 16], // segment routing SIDs (RFC 9602)
+];
+
 /** True for anything that is not a normal public unicast address.
  * Unparseable input is blocked.
  */
@@ -64,6 +80,11 @@ export function isBlockedIp(ip: string): boolean {
     // Reject the IPv6 documentation prefix explicitly.
     if (v6.match(ipaddr.IPv6.parse("2001:db8::"), 32)) {
       return true;
+    }
+
+    // More IPv6 ranges that are not ordinary public unicast (Phase 9 review).
+    for (const [network, prefix] of EXTRA_BLOCKED_V6) {
+      if (v6.match(ipaddr.IPv6.parse(network), prefix)) return true;
     }
   }
 
