@@ -19,7 +19,7 @@
     "checkpoint:4": "node scripts/checkpoint4.mjs",
     "checkpoint:8": "node scripts/checkpoint8.mjs",
     "checkpoint:9a": "node --import tsx scripts/checkpoint9a.mjs"
-  }, 
+  },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",

@@ -33,14 +33,14 @@ const run = (args: string[], env: NodeJS.ProcessEnv) =>
 describe("production configuration (SEC-3, SEC-6)", () => {
   const result = run(["src/tests/fixtures/productionProbe.ts"], baseEnv());
   if (result.error) {
-  throw result.error;
-}
+    throw result.error;
+  }
 
-if (result.status !== 0) {
-  throw new Error(
-    `Production probe failed.\nStatus: ${result.status}\nStderr:\n${result.stderr}`
-  );
-}
+  if (result.status !== 0) {
+    throw new Error(
+      `Production probe failed.\nStatus: ${result.status}\nStderr:\n${result.stderr}`,
+    );
+  }
   const line = result.stdout.split("\n").find((l) => l.startsWith("PROBE:"));
   const probe = line ? JSON.parse(line.slice(6)) : null;
 
