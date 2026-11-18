@@ -22,6 +22,14 @@ const schema = z.object({
     .default("true")
     .transform((v) => v === "true"),
   SCHEDULER_TICK_MS: z.coerce.number().int().min(500).max(60_000).default(15_000),
+  // How many batches of 50 one scheduler tick may claim back to back while monitors are still due.
+  // 1 is the original behavior (at most 50 checks per tick). 10 lets 200 monitors at 30 s keep up at a 15 s tick.
+  SCHEDULER_MAX_BATCHES: z.coerce.number().int().min(1).max(100).default(10),
+  // Phase 9: the daily job that deletes checks older than the plan's retention (DAT-3).
+  ENABLE_RETENTION: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   // Email (Phase 8). Local development talks to Mailpit: host localhost, port 1025, no login.
   SMTP_HOST: z.string().default("localhost"),
   SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(1025),
