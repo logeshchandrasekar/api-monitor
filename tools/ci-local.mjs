@@ -30,7 +30,7 @@ try {
 
   run(
     "Fresh clone of the committed code",
-    `git clone --quiet --branch "${branch}" "${source}" "${repo}"`,
+    `git -c core.autocrlf=false clone --quiet --branch "${branch}" "${source}" "${repo}"`,
     source,
   );
   run("Install exactly what the lockfile says", "npm ci");
