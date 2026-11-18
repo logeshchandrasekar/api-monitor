@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -8,5 +9,25 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: { "/api": { target: "http://localhost:4000", changeOrigin: true } },
+  },
+  test: {
+    // Pure-logic tests run in Node. A component test opts in to a browser-like page with
+    // `// @vitest-environment jsdom` on its first line.
+    setupFiles: ["./src/test/setup.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/test/**",
+        "src/**/*.test.{ts,tsx}",
+        "src/main.tsx",
+        "src/pages/dev/**",
+        "src/vite-env.d.ts",
+      ],
+      reporter: ["text-summary", "text", "html", "json-summary"],
+      // Floors a few points under today's numbers (about 38 % statements). The client is covered by its logic tests,
+      // these component tests and the end-to-end test; the floors only catch a real drop, not noise
+      thresholds: { statements: 33, branches: 36, functions: 20, lines: 32 },
+    },
   },
 });

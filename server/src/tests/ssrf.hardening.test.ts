@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCheckRunner, type CheckInput } from "../services/checkRunner.js";
-import { BlockedTargetError, createSafeLookup } from "../utils/safeLookup.js";
+import { BlockedTargetError, createSafeLookup, systemResolve } from "../utils/safeLookup.js";
 import { isBlockedIp, parseTargetUrl, validateTargetUrl } from "../utils/url-guard.js";
 import { startTestServer } from "./testServer.js";
 import { afterAll, beforeAll } from "vitest";
@@ -308,6 +308,12 @@ describe("createSafeLookup (the connection-time check)", () => {
       resolve: async () => [{ address: "127.0.0.1", family: 4 }],
     });
     expect((await run(lookup)).err).toBeNull();
+  });
+
+  it("the default resolver asks the operating system (localhost resolves, so no network is needed)", async () => {
+    const answers = await systemResolve("localhost");
+    expect(answers.length).toBeGreaterThan(0);
+    expect(answers.every((a) => isBlockedIp(a.address))).toBe(true); // and localhost is, of course, blocked
   });
 
   it("passes a resolver failure on, and reports an empty answer as not found", async () => {
