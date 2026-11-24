@@ -42,7 +42,11 @@ export async function claimDueNotifications(limit = BATCH_SIZE): Promise<string[
 export type DeliveryOutcome = "sent" | "retry" | "failed" | "suppressed" | "deferred" | "skipped";
 
 /** Sends one claimed row and records the result. Never throws for a send problem: that is data, not a crash. */
-export async function deliver(id: string, email: EmailService): Promise<DeliveryOutcome> {
+export async function deliver(
+  id: string,
+  email: EmailService,
+  claimedIds: ReadonlySet<string> = new Set(),
+): Promise<DeliveryOutcome> {
   const log = await prisma.notificationLog.findUnique({
     where: { id },
     include: { monitor: { select: { id: true, name: true, url: true } }, incident: true },
@@ -54,7 +58,7 @@ export async function deliver(id: string, email: EmailService): Promise<Delivery
     const alert = await prisma.notificationLog.findFirst({
       where: { incidentId: log.incident.id, type: log.incident.type },
     });
-    if (alert?.status === "QUEUED") {
+    if (alert && (alert.status === "QUEUED" || claimedIds.has(alert.id))) {
       // Still being retried: look again on the next tick instead of sending "recovered" before "down"
       await prisma.notificationLog.updateMany({
         where: { id, status: "QUEUED" },
@@ -122,7 +126,8 @@ export async function deliver(id: string, email: EmailService): Promise<Delivery
 export async function runDispatchPass(email: EmailService = getEmailService()): Promise<number> {
   const ids = await claimDueNotifications();
   // allSettled: one row blowing up never stops the others
-  const results = await Promise.allSettled(ids.map((id) => deliver(id, email)));
+  const claimedIds = new Set(ids);
+  const results = await Promise.allSettled(ids.map((id) => deliver(id, email, claimedIds)));
   results.forEach((r, i) => {
     if (r.status === "rejected")
       logger.error({ err: r.reason, notificationId: ids[i] }, "dispatching an alert crashed");
