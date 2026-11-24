@@ -8,19 +8,33 @@ import type {
   MonitorInput,
   MonitorAnalytics,
   MonitorListItem,
+  MonitorSort,
   MonitorStats,
   NotificationItem,
   Paginated,
   StatsRange,
+  TagCount,
 } from "../types/api";
 import { api } from "./api";
 
 type Page = { cursor?: string; limit?: number };
 
 export const monitorsApi = {
-  /** status: PENDING | HEALTHY | DEGRADED | DOWN | PAUSED, or empty for all. */
-  list: (query: Page & { status?: string }, signal?: AbortSignal) =>
-    api<Paginated<MonitorListItem>>("/monitors", { query, signal }),
+  /** status: PENDING | HEALTHY | DEGRADED | DOWN | PAUSED, or empty for all. q searches name, URL and tags. */
+  list: (
+    query: Page & {
+      status?: string;
+      q?: string;
+      tag?: string;
+      sort?: MonitorSort;
+      order?: "asc" | "desc";
+    },
+    signal?: AbortSignal,
+  ) => api<Paginated<MonitorListItem>>("/monitors", { query, signal }),
+
+  /** Every tag in use, with how many monitors carry it. */
+  tags: (signal?: AbortSignal) =>
+    api<{ tags: TagCount[] }>("/monitors/tags", { signal }).then((r) => r.tags),
 
   get: (id: string, signal?: AbortSignal) =>
     api<{ monitor: MonitorDetail }>(`/monitors/${id}`, { signal }).then((r) => r.monitor),

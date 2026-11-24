@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
+import { useMonitorTags } from "../../hooks/useMonitors";
 import { ApiError } from "../../services/api";
 import type { MonitorInput, PlanLimits } from "../../types/api";
 import { fieldErrorsFrom, getErrorMessage } from "../../utils/errors";
@@ -26,6 +27,7 @@ import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 import { HeadersEditor } from "./HeadersEditor";
+import { TagsInput } from "./TagsInput";
 
 type Props = {
   initial: MonitorFormValues;
@@ -53,6 +55,7 @@ export function MonitorForm({
   const [values, setValues] = useState(initial);
   const [clientErrors, setClientErrors] = useState<FormErrors>({});
   const formRef = useRef<HTMLFormElement>(null);
+  const knownTags = useMonitorTags().data?.map((t) => t.name);
 
   // Errors from the server for the last save, shown until the person changes something
   const serverFields = useMemo(() => mapServerFieldErrors(fieldErrorsFrom(error)), [error]);
@@ -156,6 +159,14 @@ export function MonitorForm({
             autoComplete="off"
             spellCheck={false}
           />
+          <div className="sm:col-span-2">
+            <TagsInput
+              value={values.tags}
+              onChange={(tags) => set("tags", tags)}
+              error={errors.tags}
+              suggestions={knownTags}
+            />
+          </div>
         </div>
       </Card>
 

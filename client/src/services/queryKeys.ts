@@ -8,7 +8,8 @@ export const queryKeys = {
 
   /** Everything under "monitors" is dropped by one invalidateQueries({ queryKey: queryKeys.monitors }). */
   monitors: ["monitors"] as const,
-  monitorList: (status: string) => ["monitors", "list", status] as const,
+  monitorList: (query: object) => ["monitors", "list", query] as const,
+  monitorTags: ["monitors", "tags"] as const,
   monitorOptions: ["monitors", "options"] as const,
   monitor: (id: string) => ["monitors", "detail", id] as const,
   monitorChecks: (id: string) => ["monitors", "checks", id] as const,

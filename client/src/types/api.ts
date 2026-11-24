@@ -174,7 +174,13 @@ export type MonitorInput = {
   headers: MonitorHeaderInput[];
   /** null clears the body. */
   body: string | null;
+  tags?: string[];
 };
+
+/** One entry of GET /api/monitors/tags. */
+export type TagCount = { name: string; count: number };
+
+export type MonitorSort = "created" | "name" | "status" | "lastChecked" | "responseTime";
 
 // ---- Phase 7: analytics -------------------------------------------------------------------------
 

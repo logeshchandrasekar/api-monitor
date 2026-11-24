@@ -158,6 +158,66 @@ describe("MonitorForm submit", () => {
   });
 });
 
+describe("MonitorForm tags", () => {
+  const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.type(screen.getByLabelText("Name"), "Tagged API");
+    await user.clear(screen.getByLabelText("URL"));
+    await user.type(screen.getByLabelText("URL"), "https://api.example.com/health");
+  };
+
+  it("tags are sent with the payload, in the form the server stores them", async () => {
+    const { onSubmit } = setup();
+    const user = userEvent.setup();
+    await fillRequired(user);
+    await user.type(screen.getByLabelText("Tags (optional)"), "Production{Enter}client a{Enter}");
+    await user.click(screen.getByRole("button", { name: "Create monitor" }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit.mock.calls[0]![0].tags).toEqual(["production", "client a"]);
+  });
+
+  it("pressing Enter in the tags box adds a tag and does not save the monitor", async () => {
+    const { onSubmit } = setup();
+    const user = userEvent.setup();
+    await fillRequired(user);
+    await user.type(screen.getByLabelText("Tags (optional)"), "critical{Enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("list", { name: "Tags on this monitor" })).toHaveTextContent(
+      "critical",
+    );
+  });
+
+  it("a monitor with no tags sends an empty list, which clears the tags of a monitor being edited", async () => {
+    const { onSubmit } = setup();
+    const user = userEvent.setup();
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Create monitor" }));
+    expect(onSubmit.mock.calls[0]![0].tags).toEqual([]);
+  });
+
+  it("editing starts with the monitor's tags, and removing one removes it from the payload", async () => {
+    const initial = {
+      ...newFormValues(limits.allowedIntervalsSec),
+      name: "Existing",
+      url: "https://api.example.com/",
+      tags: ["a", "b"],
+    };
+    const { onSubmit } = setup({ initial });
+    await userEvent.click(screen.getByRole("button", { name: "Remove tag a" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create monitor" }));
+    expect(onSubmit.mock.calls[0]![0].tags).toEqual(["b"]);
+  });
+
+  it("a tag the server refuses is shown under the tags box", () => {
+    setup({
+      error: new ApiError(400, "VALIDATION_ERROR", "Invalid input", [
+        { path: ["tags", 0], message: "Tags may use letters, numbers, spaces, - and _" },
+      ]),
+    });
+    expect(screen.getByText("Tags may use letters, numbers, spaces, - and _")).toBeVisible();
+    expect(screen.getByLabelText("Tags (optional)")).toHaveAttribute("aria-invalid", "true");
+  });
+});
+
 describe("MonitorForm server errors", () => {
   it("puts a field error under its field and says some fields need attention", () => {
     setup({

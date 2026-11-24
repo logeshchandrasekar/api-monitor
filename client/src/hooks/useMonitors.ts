@@ -2,20 +2,50 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-qu
 import { POLL_DASHBOARD_MS, POLL_DETAIL_MS } from "../config";
 import { monitorsApi } from "../services/monitorsApi";
 import { queryKeys } from "../services/queryKeys";
-import type { IncidentStatus, StatsRange } from "../types/api";
+import type { IncidentStatus, MonitorSort, StatsRange } from "../types/api";
 
 /** "" is every monitor; otherwise PENDING | HEALTHY | DEGRADED | DOWN | PAUSED. */
 export type MonitorFilter = "" | "PENDING" | "HEALTHY" | "DEGRADED" | "DOWN" | "PAUSED";
 
+/** What the monitor list can be narrowed and ordered by. Every field is optional. */
+export type MonitorListQuery = {
+  status?: MonitorFilter;
+  q?: string;
+  tag?: string;
+  sort?: MonitorSort;
+  order?: "asc" | "desc";
+};
+
 /** The monitor list, 20 at a time ("Load more"). Polls every 30 s; React Query pauses polling while the tab is hidden. */
-export function useMonitorList(status: MonitorFilter = "") {
+export function useMonitorList(query: MonitorListQuery = {}) {
   return useInfiniteQuery({
-    queryKey: queryKeys.monitorList(status),
+    queryKey: queryKeys.monitorList(query),
     queryFn: ({ pageParam, signal }) =>
-      monitorsApi.list({ status: status || undefined, cursor: pageParam, limit: 20 }, signal),
+      monitorsApi.list(
+        {
+          status: query.status || undefined,
+          q: query.q || undefined,
+          tag: query.tag || undefined,
+          sort: query.sort,
+          order: query.order,
+          cursor: pageParam,
+          limit: 20,
+        },
+        signal,
+      ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     refetchInterval: POLL_DASHBOARD_MS,
+    placeholderData: keepPreviousData, // typing in the search box keeps the old rows on screen until the new ones arrive
+  });
+}
+
+/** Every tag in use, for the tag filter and the suggestions in the monitor form. */
+export function useMonitorTags() {
+  return useQuery({
+    queryKey: queryKeys.monitorTags,
+    queryFn: ({ signal }) => monitorsApi.tags(signal),
+    staleTime: 30_000,
   });
 }
 

@@ -22,6 +22,23 @@ function MonitorRow({ monitor, now }: { monitor: MonitorListItem; now: number })
           <p className="data truncate text-xs text-fg-muted">
             <span className="font-medium">{monitor.method}</span> {monitor.url}
           </p>
+          {monitor.tags.length > 0 && (
+            <ul aria-label="Tags" className="mt-1.5 flex flex-wrap gap-1">
+              {monitor.tags.slice(0, 3).map((tag) => (
+                <li
+                  key={tag}
+                  className="rounded-full bg-subtle px-2 py-0.5 text-[11px] text-fg-muted"
+                >
+                  {tag}
+                </li>
+              ))}
+              {monitor.tags.length > 3 && (
+                <li className="px-1 py-0.5 text-[11px] text-fg-muted">
+                  +{monitor.tags.length - 3}
+                </li>
+              )}
+            </ul>
+          )}
         </div>
 
         {/* Last 24 hours at a glance */}
