@@ -46,6 +46,7 @@ const SESSION_ONLY = [
   "POST /api/users/me/password",
   "DELETE /api/users/me",
   "GET /api/monitors",
+  "GET /api/monitors/tags",
   "POST /api/monitors",
   "GET /api/dashboard/summary",
   "GET /api/incidents",

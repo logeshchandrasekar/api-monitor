@@ -6,6 +6,7 @@ import {
   duplicateMonitor,
   getMonitor,
   listMonitors,
+  listTags,
   pauseMonitor,
   resumeMonitor,
   updateMonitor,
@@ -15,6 +16,10 @@ import { serializeMonitor } from "../utils/serializers.js";
 import { validated } from "../utils/validated.js";
 
 const idOf = (res: Parameters<RequestHandler>[1]) => validated<{ id: string }>(res, "params").id;
+
+export const tags: RequestHandler = async (req, res) => {
+  res.json({ tags: await listTags(req.user!.id) });
+};
 
 export const list: RequestHandler = async (req, res) => {
   const { items, nextCursor } = await listMonitors(
