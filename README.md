@@ -1,0 +1,1 @@
+![CI](https://github.com/logeshchandrasekar/api-monitor/actions/workflows/ci.yml/badge.svg)
