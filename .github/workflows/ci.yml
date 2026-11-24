@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run that is still going
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: Server (format, types, tests, coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: apimonitor
+          POSTGRES_PASSWORD: apimonitor
+          POSTGRES_DB: api_monitor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apimonitor -d api_monitor_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Only `prisma generate` reads this; the tests get theirs from server/.env.test
+      DATABASE_URL: postgresql://apimonitor:apimonitor@localhost:5432/api_monitor_test?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install (exactly what the lockfile says)
+        run: npm ci
+      - name: Generate the Prisma client
+        run: npx prisma generate
+        working-directory: server
+      - name: Write the test environment
+        run: node tools/ci-env.mjs 5432
+      - name: Prettier
+        run: npx prettier --check .
+      - name: Typecheck
+        run: npm run typecheck -w server
+      - name: Tests with coverage (migrations run first, in the test setup)
+        run: npm run coverage -w server
+
+  client:
+    name: Client (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint -w client
+      - name: Typecheck
+        run: npm run typecheck -w client
+      - name: Tests with coverage
+        run: npm run coverage -w client
+      - name: Build
+        run: npm run build -w client
+
+  # The browser test is useful but slower and more fragile than the rest, so it reports without blocking.
+  # To make it required later, delete the `continue-on-error` line.
+  e2e:
+    name: End-to-end (Playwright, not blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: apimonitor
+          POSTGRES_PASSWORD: apimonitor
+          POSTGRES_DB: api_monitor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apimonitor -d api_monitor"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Write the environment
+        run: node tools/ci-env.mjs 5432
+      - name: Generate the Prisma client and create the tables
+        working-directory: server
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: Run the journey
+        run: npm run e2e
+      - name: Keep the report when it fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

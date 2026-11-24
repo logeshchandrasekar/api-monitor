@@ -11,16 +11,22 @@
     "build": "npm run build -w server && npm run build -w client",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
     "test": "npm run test -w server",
+    "test:client": "npm run test -w client",
+    "coverage": "npm run coverage -w server && npm run coverage -w client",
+    "ci:local": "node tools/ci-local.mjs",
+    "checkpoint:9b": "node tools/checkpoint9b.mjs",
     "format": "prettier --write .",
     "db:up": "docker compose up -d db",
     "seed:demo": "npm run seed:demo -w server",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f db",
+    "e2e": "playwright test --config e2e/playwright.config.ts",
     "flaky": "node tools/flaky-api/server.js",
     "flaky:down": "node tools/flaky-api/ctl.js down",
     "flaky:up": "node tools/flaky-api/ctl.js up"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "concurrently": "^10.0.6",
     "prettier": "^3.9.10"
   }
