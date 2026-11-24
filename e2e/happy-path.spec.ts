@@ -40,6 +40,9 @@ test("the whole journey: sign up, monitor, pause, settings, sign out and in, del
   await page.getByLabel("Name").fill(monitorName);
   await page.getByLabel("URL").fill("http://localhost:4000/api/health");
   await page.getByLabel("Check every").selectOption({ label: "10 s" }); // development only
+  await page.getByLabel("Tags (optional)").fill("e2e");
+  await page.keyboard.press("Enter"); // adds the tag, does not submit
+  await expect(page.getByRole("list", { name: "Tags on this monitor" })).toContainText("e2e");
   await page.getByRole("button", { name: "Create monitor" }).click();
 
   // ---- It is checked and turns healthy ---------------------------------------------------------
@@ -59,6 +62,20 @@ test("the whole journey: sign up, monitor, pause, settings, sign out and in, del
   // ---- The monitor list and the dashboard see it -----------------------------------------------
   await page.getByRole("link", { name: "Monitors", exact: true }).first().click();
   await expect(page.getByRole("link", { name: monitorName })).toBeVisible();
+
+  // Search, tag filter and sort (they live in the address bar)
+  await page.getByLabel("Search").fill("zzz-no-such-monitor");
+  await expect(page.getByRole("heading", { name: "No monitors match" })).toBeVisible();
+  await expect(page).toHaveURL(/q=zzz-no-such-monitor/);
+  await page.getByRole("button", { name: "Clear filters" }).first().click();
+  await expect(page.getByRole("link", { name: monitorName })).toBeVisible();
+  await page.getByLabel("Tag", { exact: true }).selectOption("e2e");
+  await expect(page).toHaveURL(/tag=e2e/);
+  await expect(page.getByRole("link", { name: monitorName })).toBeVisible();
+  await page.getByLabel("Sort by").selectOption({ label: "Name, A to Z" });
+  await expect(page).toHaveURL(/sort=name-asc/);
+  await page.getByRole("button", { name: "Clear filters" }).first().click();
+
   await page.getByRole("link", { name: "Dashboard", exact: true }).first().click();
   await expect(page.getByText(monitorName).first()).toBeVisible();
 

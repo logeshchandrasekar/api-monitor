@@ -48,6 +48,7 @@ npm audit                             # known vulnerabilities in dependencies
 | `POST /api/users/me/password`         | session only                                    | yes                   | n/a                |
 | `DELETE /api/users/me`                | session only (needs the password, rate limited) | yes                   | n/a                |
 | `GET /api/monitors`                   | session only                                    | yes                   | only own monitors  |
+| `GET /api/monitors/tags`              | session only                                    | yes                   | only own tags      |
 | `POST /api/monitors`                  | session only                                    | yes                   | n/a                |
 | `GET /api/dashboard/summary`          | session only                                    | yes                   | only own data      |
 | `GET /api/incidents`                  | session only                                    | yes                   | only own incidents |
@@ -84,6 +85,7 @@ Checked and already safe: every IPv4 numeric form; `::ffff:` mapped forms in bot
 - **No server-side session revocation.** A stolen cookie works until it expires (7 days) or the account is deleted. The PRD puts revocation outside the MVP.
 - **No password reset by email.** Post-MVP in the PRD.
 - **The first redirect hop is checked by name and literal address plus the connection-time lookup.** That is the design in SEC-1, and the rebinding tests prove the lookup is the real gate.
+- **Monitor search runs in the API process, not in SQL.** SQL's `LIKE` treats `%` and `_` as wildcards and Prisma does not escape them, so searching for `100%` would have matched every monitor. Searching and sorting therefore happen on the caller's own monitors in memory (a plan holds at most 50; a hard cap of 500 rows is a safety net), which also keeps the search strictly inside the caller's data.
 - **Two lockfiles are tracked.** `package-lock.json` at the root (the one that counts) and an old `client/package-lock.json` from before the workspace setup. `npm ci` at the root ignores the second one. Decide in Phase 10 how the client is built, then delete whichever is unused so the two cannot drift.
 - **`jar.txt` once sat in the git history** (a curl cookie jar holding a development session token). The token expired on 2 November 2026 and the file is now git-ignored. The history was not rewritten. Production must use its own `JWT_SECRET`, never the development one.
 - **`npm audit` is a snapshot.** New advisories appear all the time: this review saw a clean report turn into six findings within a day. Re-run it before every deploy.
