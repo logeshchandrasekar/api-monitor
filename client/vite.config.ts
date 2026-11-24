@@ -1,4 +1,4 @@
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 import tailwindcss from "@tailwindcss/vite";
@@ -13,7 +13,7 @@ export default defineConfig({
   test: {
     // Pure-logic tests run in Node. A component test opts in to a browser-like page with
     // `// @vitest-environment jsdom` on its first line.
-    setupFiles: [fileURLToPath(new URL("./src/test/setup.ts", import.meta.url))],
+    setupFiles: [resolve(process.cwd(), "src/test/setup.ts")],
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
