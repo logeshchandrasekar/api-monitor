@@ -41,8 +41,14 @@ export function ChecksTable({ monitorId, now }: { monitorId: string; now: number
 
       {checks.length > 0 && (
         <>
-          <div className="-mx-5 overflow-x-auto px-5">
-            <table className="w-full min-w-[34rem] text-left text-sm">
+          {/* Focusable and named, so a keyboard user can scroll the table sideways on a narrow screen */}
+          <div
+            role="region"
+            aria-label="Recent checks (scrolls sideways on small screens)"
+            tabIndex={0}
+            className="-mx-5 overflow-x-auto px-5"
+          >
+            <table className="w-full min-w-136 text-left text-sm">
               <thead className="text-xs text-fg-muted">
                 <tr>
                   <th scope="col" className="pb-2 pr-4 font-medium">

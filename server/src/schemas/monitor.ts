@@ -65,6 +65,22 @@ export const listMonitorsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z.uuid().optional(),
   status: z.enum(["PENDING", "HEALTHY", "DEGRADED", "DOWN", "PAUSED"]).optional(),
+  // Phase 9: search, tag filter and sorting. An empty q or tag means "no filter".
+  q: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((v) => v || undefined),
+  tag: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(30)
+    .optional()
+    .transform((v) => v || undefined),
+  sort: z.enum(["created", "name", "status", "lastChecked", "responseTime"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 export const idParamsSchema = z.object({ id: z.uuid() });

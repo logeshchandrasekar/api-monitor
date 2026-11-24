@@ -29,6 +29,20 @@ export type HeaderRow = {
   saved: boolean;
 };
 
+export const MAX_TAGS = 10;
+export const MAX_TAG_LENGTH = 30;
+const TAG_RE = /^[a-z0-9][a-z0-9 _-]*$/;
+
+/** The server stores tags trimmed and lower-case; do the same on screen so what you see is what is saved. */
+export const normalizeTag = (raw: string) => raw.trim().replace(/\s+/g, " ").toLowerCase();
+
+/** A message when the (already normalized) tag would be refused by the server, otherwise null. */
+export function tagProblem(tag: string): string | null {
+  if (tag.length > MAX_TAG_LENGTH) return `A tag can have at most ${MAX_TAG_LENGTH} characters.`;
+  if (!TAG_RE.test(tag)) return "Tags may use letters, numbers, spaces, - and _.";
+  return null;
+}
+
 export type MonitorFormValues = {
   name: string;
   url: string;
@@ -41,6 +55,7 @@ export type MonitorFormValues = {
   followRedirects: boolean;
   headers: HeaderRow[];
   body: string;
+  tags: string[];
   /** Until the person edits the timeout it follows the interval, like the server's own default. */
   timeoutTouched: boolean;
 };
@@ -76,6 +91,7 @@ export function newFormValues(allowedIntervalsSec: number[]): MonitorFormValues 
     followRedirects: true,
     headers: [],
     body: "",
+    tags: [],
     timeoutTouched: false,
   };
 }
@@ -102,6 +118,7 @@ export function formFromMonitor(m: MonitorDetail): MonitorFormValues {
       });
     }),
     body: m.body ?? "",
+    tags: [...m.tags],
     timeoutTouched: true, // an existing monitor's timeout is a decision, not a default
   };
 }
@@ -173,6 +190,12 @@ export function validateForm(values: MonitorFormValues): FormErrors {
       errors[`headers.${i}.value`] = "A header value cannot contain line breaks.";
   });
 
+  if (values.tags.length > MAX_TAGS) errors.tags = `At most ${MAX_TAGS} tags.`;
+  else {
+    const bad = values.tags.map(tagProblem).find((p) => p !== null);
+    if (bad) errors.tags = bad;
+  }
+
   if (methodHasBody(values.method) && values.body.trim()) {
     if (new TextEncoder().encode(values.body).length > MAX_BODY_BYTES) {
       errors.body = "The body is too large (64 KB at most).";
@@ -206,6 +229,7 @@ export function toPayload(values: MonitorFormValues): MonitorInput {
         : { name: row.name.trim(), value: row.value },
     ),
     body: methodHasBody(values.method) && values.body.trim() ? values.body : null,
+    tags: values.tags,
   };
 }
 
@@ -215,6 +239,7 @@ export function mapServerFieldErrors(fields: FieldErrors): FormErrors {
   for (const [path, message] of Object.entries(fields)) {
     if (path === "timeoutMs") out.timeoutSec = message;
     else if (/^headers\.\d+$/.test(path)) out[`${path}.value`] = message;
+    else if (/^tags(\.\d+)?$/.test(path)) out.tags = message;
     else out[path] = message;
   }
   return out;

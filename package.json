@@ -15,17 +15,20 @@
     "coverage": "npm run coverage -w server && npm run coverage -w client",
     "ci:local": "node tools/ci-local.mjs",
     "checkpoint:9b": "node tools/checkpoint9b.mjs",
+    "checkpoint:9c": "node tools/checkpoint9c.mjs",
     "format": "prettier --write .",
     "db:up": "docker compose up -d db",
     "seed:demo": "npm run seed:demo -w server",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f db",
-    "e2e": "playwright test --config e2e/playwright.config.ts",
+    "e2e": "playwright test --config e2e/playwright.config.ts happy-path",
+    "e2e:a11y": "playwright test --config e2e/playwright.config.ts accessibility",
     "flaky": "node tools/flaky-api/server.js",
     "flaky:down": "node tools/flaky-api/ctl.js down",
     "flaky:up": "node tools/flaky-api/ctl.js up"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.63.0",
     "concurrently": "^10.0.6",
     "prettier": "^3.9.10"

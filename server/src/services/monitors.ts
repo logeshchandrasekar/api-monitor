@@ -110,10 +110,83 @@ const freshState = (now: Date) => ({
   nextCheckAt: now,
 });
 
+/** A plan holds at most 50 monitors, so sorting a user's list in memory is cheap. This is only a safety net. */
+const MAX_SORTED_ROWS = 500;
+
+/** Worst first, so the default order for "status" puts what needs attention at the top. */
+const STATUS_RANK = { DOWN: 0, DEGRADED: 1, PENDING: 2, HEALTHY: 3, PAUSED: 4 } as const;
+
+/** What a person expects when they pick a sort and do not say which way. */
+const DEFAULT_ORDER = {
+  created: "desc", // newest first
+  name: "asc", // A to Z
+  status: "asc", // worst first
+  lastChecked: "desc", // most recently checked first
+  responseTime: "desc", // slowest first
+} as const;
+
+type SortedRow = Prisma.MonitorGetPayload<object>;
+
+/** Rows with no value (never checked, no response yet) always go last, whichever way the list is sorted. */
+function compareNullable(a: number | null, b: number | null, dir: 1 | -1) {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return (a - b) * dir;
+}
+
+function compareMonitors(sort: NonNullable<ListMonitorsQuery["sort"]>, dir: 1 | -1) {
+  const rank = (m: SortedRow) => STATUS_RANK[m.isPaused ? "PAUSED" : m.status];
+  return (a: SortedRow, b: SortedRow) => {
+    let result = 0;
+    if (sort === "name")
+      result = a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) * dir;
+    else if (sort === "status") result = (rank(a) - rank(b)) * dir;
+    else if (sort === "lastChecked")
+      result = compareNullable(
+        a.lastCheckedAt?.getTime() ?? null,
+        b.lastCheckedAt?.getTime() ?? null,
+        dir,
+      );
+    else if (sort === "responseTime")
+      result = compareNullable(a.lastResponseTimeMs, b.lastResponseTimeMs, dir);
+    else result = (a.createdAt.getTime() - b.createdAt.getTime()) * dir;
+    // Equal values: newest first, then by id, so the order never changes between two requests
+    return result || b.createdAt.getTime() - a.createdAt.getTime() || a.id.localeCompare(b.id);
+  };
+}
+
 export async function listMonitors(userId: string, query: ListMonitorsQuery) {
   const where: Prisma.MonitorWhereInput = { userId };
   if (query.status === "PAUSED") where.isPaused = true;
   else if (query.status) Object.assign(where, { status: query.status, isPaused: false });
+  if (query.tag) where.tags = { has: query.tag };
+
+  if (query.q || query.sort) {
+    // Searching and sorting happen here, on the user's own (at most 50) monitors, instead of in SQL: SQL's LIKE
+    // treats % and _ as wildcards, and Prisma does not escape them, so "100%" would match everything.
+    const needle = query.q?.toLowerCase();
+    const sortKey = query.sort ?? "created";
+    const sorted = (await prisma.monitor.findMany({ where, take: MAX_SORTED_ROWS }))
+      .filter(
+        (m) =>
+          !needle ||
+          m.name.toLowerCase().includes(needle) ||
+          m.url.toLowerCase().includes(needle) ||
+          m.tags.some((t) => t.includes(needle)),
+      )
+      .sort(compareMonitors(sortKey, (query.order ?? DEFAULT_ORDER[sortKey]) === "asc" ? 1 : -1));
+    // The cursor is still the id of the last item of the previous page: the next page starts right after it
+    let start = 0;
+    if (query.cursor) {
+      const at = sorted.findIndex((m) => m.id === query.cursor);
+      if (at === -1) return { items: [], nextCursor: null }; // deleted since the last page, or not this user's
+      start = at + 1;
+    }
+    const items = sorted.slice(start, start + query.limit);
+    const hasMore = start + query.limit < sorted.length;
+    return { items, nextCursor: hasMore ? (items[items.length - 1]?.id ?? null) : null };
+  }
 
   const rows = await prisma.monitor.findMany({
     where,
@@ -124,6 +197,16 @@ export async function listMonitors(userId: string, query: ListMonitorsQuery) {
   const hasMore = rows.length > query.limit;
   const items = hasMore ? rows.slice(0, query.limit) : rows;
   return { items, nextCursor: hasMore ? (items[items.length - 1]?.id ?? null) : null };
+}
+
+/** Every tag this user has used, with how many monitors carry it, for the tag filter. */
+export async function listTags(userId: string) {
+  return prisma.$queryRaw<{ name: string; count: number }[]>`
+    SELECT t AS name, count(*)::int AS count
+    FROM monitors, unnest(tags) AS t
+    WHERE "userId" = ${userId}
+    GROUP BY t
+    ORDER BY count DESC, t ASC`;
 }
 
 export const getMonitor = (userId: string, id: string) => findOwned(userId, id);

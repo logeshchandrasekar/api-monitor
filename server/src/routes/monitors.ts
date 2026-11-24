@@ -26,6 +26,8 @@ const withId = validate({ params: idParamsSchema });
 monitorsRouter.use(requireAuth);
 
 monitorsRouter.get("/", validate({ query: listMonitorsQuerySchema }), monitors.list);
+// Before the /:id routes, or "tags" would be read as an id
+monitorsRouter.get("/tags", monitors.tags);
 monitorsRouter.post("/", validate({ body: createMonitorSchema }), monitors.create);
 monitorsRouter.get("/:id", withId, monitors.get);
 monitorsRouter.patch(

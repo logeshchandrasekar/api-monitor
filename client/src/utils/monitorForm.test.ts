@@ -7,7 +7,9 @@ import {
   mapServerFieldErrors,
   newFormValues,
   newHeaderRow,
+  normalizeTag,
   pruneBlankRows,
+  tagProblem,
   toPayload,
   validateForm,
 } from "./monitorForm";
@@ -162,5 +164,49 @@ describe("pruneBlankRows, mapServerFieldErrors, formatJson", () => {
   it("pretty-prints valid JSON and returns null otherwise", () => {
     expect(formatJson('{"a":1}')).toBe('{\n  "a": 1\n}');
     expect(formatJson("nope")).toBeNull();
+  });
+});
+
+describe("tags in the monitor form", () => {
+  it("normalizeTag trims, lower-cases and collapses spaces", () => {
+    expect(normalizeTag("  Client   A ")).toBe("client a");
+    expect(normalizeTag("PROD")).toBe("prod");
+    expect(normalizeTag("   ")).toBe("");
+  });
+
+  it("tagProblem accepts what the server accepts and explains what it refuses", () => {
+    for (const ok of ["prod", "client a", "eu-west_1", "2fa", "a".repeat(30)])
+      expect(tagProblem(ok)).toBeNull();
+    expect(tagProblem("-leading")).toMatch(/letters, numbers/);
+    expect(tagProblem("no/slash")).toMatch(/letters, numbers/);
+    expect(tagProblem("émoji")).toMatch(/letters, numbers/);
+    expect(tagProblem("a".repeat(31))).toMatch(/at most 30/);
+  });
+
+  it("validateForm accepts up to 10 tags and flags the 11th or a bad one", () => {
+    const base = { ...newFormValues([300]), name: "n", url: "https://example.com/" };
+    expect(
+      validateForm({ ...base, tags: Array.from({ length: 10 }, (_, i) => `t${i}`) }).tags,
+    ).toBeUndefined();
+    expect(
+      validateForm({ ...base, tags: Array.from({ length: 11 }, (_, i) => `t${i}`) }).tags,
+    ).toBe("At most 10 tags.");
+    expect(validateForm({ ...base, tags: ["fine", "not/fine"] }).tags).toMatch(/letters, numbers/);
+  });
+
+  it("a new form has no tags, and the payload carries them", () => {
+    const values = {
+      ...newFormValues([300]),
+      name: "n",
+      url: "https://example.com/",
+      tags: ["a", "b"],
+    };
+    expect(newFormValues([300]).tags).toEqual([]);
+    expect(toPayload(values).tags).toEqual(["a", "b"]);
+  });
+
+  it("server errors on a tag land on the tags field", () => {
+    expect(mapServerFieldErrors({ "tags.2": "Bad tag" }).tags).toBe("Bad tag");
+    expect(mapServerFieldErrors({ tags: "At most 10 tags" }).tags).toBe("At most 10 tags");
   });
 });

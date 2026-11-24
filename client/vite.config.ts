@@ -25,9 +25,9 @@ export default defineConfig({
         "src/vite-env.d.ts",
       ],
       reporter: ["text-summary", "text", "html", "json-summary"],
-      // Floors a few points under today's numbers (about 38 % statements). The client is covered by its logic tests,
+      // Floors a few points under today's numbers (about 45 % statements). The client is covered by its logic tests,
       // these component tests and the end-to-end test; the floors only catch a real drop, not noise
-      thresholds: { statements: 33, branches: 36, functions: 20, lines: 32 },
+      thresholds: { statements: 40, branches: 43, functions: 28, lines: 39 },
     },
   },
 });
