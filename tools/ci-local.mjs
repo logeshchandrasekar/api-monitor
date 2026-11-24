@@ -8,12 +8,12 @@
 // CI_KEEP=1 to keep the temporary clone (its path is printed) when something fails.
 import { execSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join } from "node:path";
 
 const port = process.env.CI_DB_PORT ?? "5433";
 const source = execSync("git rev-parse --show-toplevel", { encoding: "utf8" }).trim();
-const work = mkdtempSync(join(tmpdir(), "api-monitor-ci-"));
+const work = mkdtempSync(join(homedir(), "AppData", "Local", "Temp", "api-monitor-ci-"));
 const repo = join(work, "repo");
 const started = Date.now();
 
