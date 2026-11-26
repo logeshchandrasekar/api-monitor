@@ -9,7 +9,9 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const dbHost = new URL(env.DATABASE_URL).hostname;
 if (env.NODE_ENV === "production" || !LOCAL_HOSTS.has(dbHost)) {
   console.error(`Refusing to seed demo data: NODE_ENV=${env.NODE_ENV}, database host=${dbHost}.`);
-  console.error("The demo account has a public password and may only be created on a local database.");
+  console.error(
+    "The demo account has a public password and may only be created on a local database.",
+  );
   process.exit(1);
 }
 
