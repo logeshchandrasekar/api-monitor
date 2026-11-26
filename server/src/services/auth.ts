@@ -32,6 +32,15 @@ export async function registerUser(input: { name: string; email: string; passwor
   });
   if (existing) throw emailTaken();
 
+  // Phase 10: a hard cap on accounts for a public deployment (MAX_USERS=0 means no cap)
+  if (env.MAX_USERS > 0 && (await prisma.user.count()) >= env.MAX_USERS) {
+    throw new AppError(
+      403,
+      "REGISTRATION_CLOSED",
+      "Sign-ups are closed right now. Please try again later.",
+    );
+  }
+
   const passwordHash = await hashPassword(input.password);
   try {
     return await prisma.user.create({

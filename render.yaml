@@ -1,0 +1,56 @@
+# Render Blueprint: the API as code. Render reads this file from the repo root.
+# FREE-TIER EDITION: a free web service, with the database on Supabase (Phase 10 chapter, section 10.1).
+# To move to a paid plan later, follow the last section of the chapter ("Later: moving to the paid tier").
+services:
+  - type: web
+    name: api-monitor-api
+    runtime: node
+    region: singapore # closest to Chennai; keep the Supabase database in Singapore too
+    plan: free # sleeps after 15 minutes without requests. The external pinger (section 10c.5) keeps it awake.
+    buildCommand: npm ci --include=dev && npm run db:generate -w server && npm run build -w server
+    # The free plan has no separate release step, so migrations run every time the service starts, before the server.
+    # prisma migrate deploy takes a lock, so two starts overlapping (a deploy during a restart) cannot collide.
+    startCommand: npm run db:deploy -w server && npm run start -w server
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass # deploy only after the GitHub Actions checks are green
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL # the Supabase SESSION POOLER connection string (section 10b.2), not Direct, not Transaction
+        sync: false
+      # Render creates these once. COPY BOTH into your password manager: without ENCRYPTION_KEY the stored
+      # request headers and bodies cannot be decrypted after a restore.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: CLIENT_URL # the Vercel address, no trailing slash. Render asks for it when you apply the Blueprint.
+        sync: false
+      - key: TRUST_PROXY_HOPS # Vercel rewrite in front of Render = 2. Measure it (section 10c.2).
+        value: "2"
+      - key: ALLOW_PRIVATE_TARGETS
+        value: "false" # the server refuses to boot if this is true in production
+      - key: ENABLE_SCHEDULER # exactly ONE process runs these three jobs: a free service is always a single instance
+        value: "true"
+      - key: ENABLE_DISPATCHER
+        value: "true"
+      - key: ENABLE_RETENTION
+        value: "true"
+      - key: REGISTER_LIMIT_PER_HOUR
+        value: "5"
+      - key: MAX_USERS
+        value: "200"
+      - key: LOG_LEVEL
+        value: info
+      - key: SMTP_HOST # smtp-relay.brevo.com
+        sync: false
+      - key: SMTP_PORT
+        value: "2525" # Render blocks ports 25, 465 and 587 on free services; Brevo also listens on 2525
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false

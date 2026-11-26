@@ -20,3 +20,6 @@ cookies.txt
 server/skills-lock.json
 playwright-report
 test-results
+# Phase 10: database dumps and backups never go into git
+backups/
+*.dump

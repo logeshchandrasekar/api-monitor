@@ -16,6 +16,7 @@
     "ci:local": "node tools/ci-local.mjs",
     "checkpoint:9b": "node tools/checkpoint9b.mjs",
     "checkpoint:9c": "node tools/checkpoint9c.mjs",
+    "checkpoint:10": "node tools/checkpoint10.mjs",
     "format": "prettier --write .",
     "db:up": "docker compose up -d db",
     "seed:demo": "npm run seed:demo -w server",
