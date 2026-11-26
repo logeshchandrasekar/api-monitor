@@ -53,6 +53,8 @@ jobs:
         run: npx prettier --check .
       - name: Typecheck
         run: npm run typecheck -w server
+      - name: Production build (the command Render runs)
+        run: npm run build -w server
       - name: Tests with coverage (migrations run first, in the test setup)
         run: npm run coverage -w server
 

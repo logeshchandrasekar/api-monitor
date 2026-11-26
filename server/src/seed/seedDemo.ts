@@ -4,7 +4,7 @@ import { openKeyOf } from "../services/incidentLifecycle.js";
 import { DEMO_PROFILES, generateHistory } from "./demoHistory.js";
 
 export const DEMO_EMAIL = "demo@apimonitor.dev";
-export const DEMO_PASSWORD = "demo-password-123";
+export const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "demo-password-123";
 
 const BATCH = 5_000;
 

@@ -15,6 +15,7 @@
     "coverage": "vitest run --coverage",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "checkpoint:2": "node scripts/checkpoint2.mjs",
     "checkpoint:3": "node scripts/checkpoint3.mjs",

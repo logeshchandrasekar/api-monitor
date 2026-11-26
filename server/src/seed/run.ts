@@ -3,8 +3,13 @@ import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { DEMO_EMAIL, DEMO_PASSWORD, seedDemo } from "./seedDemo.js";
 
-if (env.NODE_ENV === "production") {
-  console.error("Refusing to seed demo data with NODE_ENV=production.");
+// The demo login is public (it is in the repository), so it must only ever exist on a local database.
+// NODE_ENV is not enough: on a laptop it is "development" even when DATABASE_URL points at production.
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+const dbHost = new URL(env.DATABASE_URL).hostname;
+if (env.NODE_ENV === "production" || !LOCAL_HOSTS.has(dbHost)) {
+  console.error(`Refusing to seed demo data: NODE_ENV=${env.NODE_ENV}, database host=${dbHost}.`);
+  console.error("The demo account has a public password and may only be created on a local database.");
   process.exit(1);
 }
 

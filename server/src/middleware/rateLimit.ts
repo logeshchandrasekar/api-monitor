@@ -17,6 +17,18 @@ export const globalLimiter = rateLimit({
   handler,
 });
 
+// Phase 10. Applied only to /register and it counts the accounts that were created (failed attempts are not counted),
+// so a bot minting accounts is stopped while a person who mistypes is not. REGISTER_LIMIT_PER_HOUR=0 switches it off.
+export const registerLimiter = rateLimit({
+  windowMs: 60 * 60_000,
+  limit: () => env.REGISTER_LIMIT_PER_HOUR,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skipFailedRequests: true,
+  skip: () => skip() || env.REGISTER_LIMIT_PER_HOUR === 0,
+  handler,
+});
+
 // Applied only to register/login. Successful requests are not counted.
 export const authLimiter = rateLimit({
   windowMs: 15 * 60_000,

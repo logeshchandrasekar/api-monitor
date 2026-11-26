@@ -20,6 +20,8 @@ export function createApp() {
   const app = express();
 
   app.disable("x-powered-by");
+  // Phase 10: behind Vercel and Render the socket address is a proxy. This makes req.ip the real visitor (rate limits use it).
+  app.set("trust proxy", env.TRUST_PROXY_HOPS);
   app.use(
     pinoHttp({
       logger,
@@ -32,6 +34,12 @@ export function createApp() {
     }),
   );
   app.use(helmet());
+  // Phase 10: nothing under /api may be kept by a shared cache. Vercel's CDN honours an origin's Cache-Control on
+  // rewritten responses, and every answer here belongs to one user.
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
   app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
   app.use(globalLimiter);
   app.use(requireJson);
